@@ -122,4 +122,4 @@ class Trader:
 
         conversions = 0
         logger.flush(state, result, conversions, trader_data)
-        return orders, conversions, trader_data
+        return result, conversions, trader_data
