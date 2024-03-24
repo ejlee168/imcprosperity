@@ -13,7 +13,7 @@ class Trader:
             orders: List[Order] = []
             if str(product) == "AMETHYSTS":
                 acceptable_price = 10000  # Participant should calculate this value
-            else:
+            else:  # For starfruit price:
                 acceptable_price = 5000
             print("Acceptable price : " + str(acceptable_price))
             print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
@@ -33,7 +33,8 @@ class Trader:
             result[product] = orders
     
     
-        traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
-        
+        #traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
+        print(state.position)
+
         conversions = 1
-        return result, conversions, traderData
+        return result, conversions
