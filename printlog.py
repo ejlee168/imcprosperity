@@ -15,7 +15,9 @@ new_csv = pd.DataFrame(columns=head)
 
 with open("log1.txt", "r") as log:
     for line in log:
+        line = line.strip()
         line = line.split(";")
+        print(line)
         new_csv.loc[len(new_csv)] = line
 
 new_csv.to_excel("log.xlsx")
