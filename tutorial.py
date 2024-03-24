@@ -121,5 +121,5 @@ class Trader:
         trader_data = "" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
 
         conversions = 0
-        logger.flush(state, orders, conversions, trader_data)
-        return result, conversions, trader_data  
+        logger.flush(state, result, conversions, trader_data)
+        return orders, conversions, trader_data
