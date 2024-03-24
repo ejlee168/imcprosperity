@@ -118,9 +118,8 @@ class Trader:
             result[product] = orders
     
         
-        traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
-        logger.print(state.position)
+        trader_data = "" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
 
-        conversions = 1
-        logger.flush(state, orders, conversions, traderData)
-        return result, conversions, traderData
+        conversions = 0
+        logger.flush(state, orders, conversions, trader_data)
+        return result, conversions, trader_data  
