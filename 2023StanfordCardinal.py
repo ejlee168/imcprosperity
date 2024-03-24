@@ -1,5 +1,5 @@
 from typing import Dict, List
-from tutorialdatamodel import OrderDepth, TradingState, Order
+from datamodel import OrderDepth, TradingState, Order
 import collections
 from collections import defaultdict
 import random

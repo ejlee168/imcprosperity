@@ -96,19 +96,24 @@ class Trader:
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
+
+            # Sets acceptable prices to buy
             if str(product) == "AMETHYSTS":
                 acceptable_price = 10000  # Participant should calculate this value
             else:  # For starfruit price:
                 acceptable_price = 5000
+
             logger.print("Acceptable price : " + str(acceptable_price))
             logger.print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
     
+            # BUYING 
             if len(order_depth.sell_orders) != 0:
                 best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
                 if int(best_ask) < acceptable_price:
                     logger.print("BUY", str(-best_ask_amount) + "x", best_ask)
                     orders.append(Order(product, best_ask, -best_ask_amount))
     
+            # SELLING
             if len(order_depth.buy_orders) != 0:
                 best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
                 if int(best_bid) > acceptable_price:
