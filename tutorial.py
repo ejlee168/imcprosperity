@@ -33,8 +33,8 @@ class Trader:
             result[product] = orders
     
     
-        #traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
+        traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
         print(state.position)
 
         conversions = 1
-        return result, conversions
+        return result, conversions, traderData
