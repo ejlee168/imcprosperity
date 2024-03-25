@@ -174,19 +174,19 @@ class Trader:
                     acceptable_price = round(sum(self.starfruit_cache)/self.starfruit_cache_num, 5)
 
                 logger.print("Starfruit acceptable price ", acceptable_price)
-                logger.print("Best_ask   < acceptable_price < best_bid  ")
-                logger.print(best_ask, " < ", acceptable_price, " < ", best_bid)
+                logger.print("Best ask: ", best_ask)
+                logger.print("Best bid: ", best_bid)
 
             # Do the BUYING 
             if len(order_depth.sell_orders) != 0:
                 if int(best_ask) < acceptable_price:
-                    logger.print("BUY", str(-best_ask_amount) + "x", best_ask)
+                    logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                     orders.append(Order(product, best_ask, -best_ask_amount))
     
             # Do the SELLING
             if len(order_depth.buy_orders) != 0:
                 if int(best_bid) > acceptable_price:
-                    logger.print("SELL", str(best_bid_amount) + "x", best_bid)
+                    logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                     orders.append(Order(product, best_bid, -best_bid_amount))
             
             # Add the orders of the corresponding product to result
