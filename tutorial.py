@@ -2,6 +2,7 @@ import json
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 from typing import Any, List
 
+# Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
     def __init__(self) -> None:
         self.logs = ""
