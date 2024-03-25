@@ -156,11 +156,15 @@ class Trader:
             if product == "AMETHYSTS": 
                 acceptable_price = 10000 # Amethyst price is static, therefore static acceptable price
             elif product == "STARFRUIT":
-                # Price is based on average of last 20 midprices
-                if (state.timestamp != 0):
-                    predicted_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 200)
-                    if (predicted_price != -1):
-                        acceptable_price = predicted_price
+                # Price is based on regression prediction of next timestamp, otherwise average sum
+                predicted_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 100)
+
+                if (state.timestamp != 0 and predicted_price != -1):
+                    acceptable_price = predicted_price
+
+                elif (state.timestamp == 0):
+                    acceptable_price = 5000
+                    
                 else:
                     acceptable_price = sum(self.starfruit_cache)/self.starfruit_cache_num
 
