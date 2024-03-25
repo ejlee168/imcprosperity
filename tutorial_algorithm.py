@@ -165,7 +165,7 @@ class Trader:
 
                 # When the timestamp is not 0 and the price can be predicted with regression
                 if (state.timestamp != 0 and predicted_price != -1): 
-                    acceptable_price = predicted_price
+                    acceptable_price = round(predicted_price, 5)
 
                 elif (state.timestamp == 0): # When the timestamp is 0, set price to 5000
                     acceptable_price = 5000
