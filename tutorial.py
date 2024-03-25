@@ -158,8 +158,12 @@ class Trader:
                 acceptable_price = 10000 # Amethyst price is static, therefore static acceptable price
             elif product == "STARFRUIT":
                 # Price is based on average of last 20 midprices
-                #acceptable_price = sum(self.starfruit_cache)/self.starfruit_cache_num
-                acceptable_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 100)
+                if (state.timestamp != 0):
+                    acceptable_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 200)
+                else:
+                    acceptable_price = 5000
+
+                logger.print(acceptable_price)
 
             # Do the BUYING 
             if len(order_depth.sell_orders) != 0:
