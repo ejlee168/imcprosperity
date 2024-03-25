@@ -2,6 +2,8 @@ import json
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 from typing import Any, List
 
+TIME_STAMP_INCREMENT = 100
+
 # Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
     def __init__(self) -> None:
@@ -89,24 +91,35 @@ logger = Logger()
 
 class Trader:
 
+    starfruit_cache = []
+    starfruit_cache_num = 20
+
     def run(self, state: TradingState):
         # Only method required. It takes all buy and sell orders for all symbols as an input, and outputs a list of orders to be sent
         logger.print("traderData: " + state.traderData)
         logger.print("Observations: " + str(state.observations))
         result = {}
+
+        # Remove starfruit prices from cache
+        if (len(self.starfruit_cache) == self.starfruit_cache_num): 
+            self.starfruit_cache.pop(0)
+
+        best_starfruit_ask, _ = list(order_depth.sell_orders.items())[0]
+        best_starfruit_bid, _ = list(order_depth.buy_orders.items())[0]
+        self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
+
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
 
             # Sets acceptable prices to buy
-            if str(product) == "AMETHYSTS":
+            if product == "AMETHYSTS":
                 acceptable_price = 10000
-            else:  # For starfruit price:
-                # MAKE THIS PRICE CHANGE ACCORDING TO MOVING AVERAGE (LAST 20 mid prices?)
-                acceptable_price = 5000
+            else:  # For starfruit price MAKE THIS PRICE CHANGE ACCORDING TO MOVING AVERAGE
+                acceptable_price = sum(self.starfruit_cache)/self.starfruit_cache_num
 
-            logger.print("Acceptable price : " + str(acceptable_price))
-            logger.print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
+            # logger.print("Acceptable price : " + str(acceptable_price))
+            # logger.print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
     
             # BUYING 
             if len(order_depth.sell_orders) != 0:
@@ -123,7 +136,6 @@ class Trader:
                     orders.append(Order(product, best_bid, -best_bid_amount))
             
             result[product] = orders
-    
         
         trader_data = "" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
 
