@@ -124,7 +124,10 @@ class Trader:
         mean_y = np.mean(Y)
 
         # Calculate the slope (m)
-        m = np.sum((X - mean_x) * (Y - mean_y)) / np.sum((X - mean_x) ** 2)
+        if (np.var(X) == 0):
+            return -1 # Return -1 if the variance is 0
+        else:
+            m = np.sum((X - mean_x) * (Y - mean_y)) / np.sum((X - mean_x) ** 2)
 
         # Calculate the intercept (c)
         c = mean_y - m * mean_x
@@ -133,10 +136,6 @@ class Trader:
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
-
-        # logger.print is a special print() that allows us to use the visualiser 
-        logger.print("traderData: " + state.traderData)
-        logger.print("Observations: " + str(state.observations))
 
         # Dictionary that will end up storing all the orders of each product
         result = {}
@@ -159,11 +158,13 @@ class Trader:
             elif product == "STARFRUIT":
                 # Price is based on average of last 20 midprices
                 if (state.timestamp != 0):
-                    acceptable_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 200)
+                    predicted_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 200)
+                    if (predicted_price != -1):
+                        acceptable_price = predicted_price
                 else:
-                    acceptable_price = 5000
+                    acceptable_price = sum(self.starfruit_cache)/len(self.starfruit_cache_num)
 
-                logger.print(acceptable_price)
+                logger.print("Starfruit acceptable price ", acceptable_price)
 
             # Do the BUYING 
             if len(order_depth.sell_orders) != 0:
