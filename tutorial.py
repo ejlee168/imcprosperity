@@ -99,8 +99,9 @@ class Trader:
 
             # Sets acceptable prices to buy
             if str(product) == "AMETHYSTS":
-                acceptable_price = 10000  # Participant should calculate this value
+                acceptable_price = 10000
             else:  # For starfruit price:
+                # MAKE THIS PRICE CHANGE ACCORDING TO MOVING AVERAGE (LAST 20 mid prices?)
                 acceptable_price = 5000
 
             logger.print("Acceptable price : " + str(acceptable_price))
