@@ -94,7 +94,7 @@ class Trader:
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
-    starfruit_cache_num = 25 # change this value to adjust the 'lag'
+    starfruit_cache_num = 23 # change this value to adjust the 'lag'
 
     # Helper function to cache the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -172,7 +172,8 @@ class Trader:
 
                 else: # when the  price cannot be predicted with regression, then use moving average midprice
                     acceptable_price = round(sum(self.starfruit_cache)/self.starfruit_cache_num, 5)
-
+               
+                logger.print("Starfruit cache num", self.starfruit_cache_num)
                 logger.print("Starfruit acceptable price ", acceptable_price)
                 logger.print("Best ask: ", best_ask)
                 logger.print("Best bid: ", best_bid)
