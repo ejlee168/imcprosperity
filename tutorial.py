@@ -106,8 +106,8 @@ class Trader:
 
         order_depth: OrderDepth = state.order_depths["STARFRUIT"]
 
-        best_starfruit_ask, _ = list(state.order_depth.sell_orders.items())[0]
-        best_starfruit_bid, _ = list(state.order_depth.buy_orders.items())[0]
+        best_starfruit_ask, _ = list(order_depth.sell_orders.items())[0]
+        best_starfruit_bid, _ = list(order_depth.buy_orders.items())[0]
         self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
 
         for product in state.order_depths:
