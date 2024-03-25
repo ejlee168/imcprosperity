@@ -121,17 +121,7 @@ class Trader:
             self.starfruit_cache.pop(0)
         
         self.cache_product("STARFRUIT", state)
-
-        # # Get the order depths of starfruit
-        # starfruit_order_depth: OrderDepth = state.order_depths["STARFRUIT"]
-
-        # # Extract the best starfruit ask and bid
-        # best_starfruit_ask, _ = list(starfruit_order_depth.sell_orders.items())[0]
-        # best_starfruit_bid, _ = list(starfruit_order_depth.buy_orders.items())[0]
-
-        # # Add the starfruit midprice to starfruit_cache
-        # self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
-
+        
         # Do the actual buying and selling
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
