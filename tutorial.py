@@ -1,8 +1,8 @@
 import json
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 from typing import Any, List
-
-TIME_STAMP_INCREMENT = 100
+import numpy as np
+import pandas as pd
 
 # Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
@@ -93,20 +93,45 @@ class Trader:
 
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
+    starfruit_time_cache = []
     starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
+    # Helper function to cache the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
-        # Get the order depths of starfruit
-        starfruit_order_depth: OrderDepth = state.order_depths["STARFRUIT"]
+        # Get the order depths of product
+        order_depth: OrderDepth = state.order_depths[product]
 
-        # Extract the best starfruit ask and bid
-        best_starfruit_ask, _ = list(starfruit_order_depth.sell_orders.items())[0]
-        best_starfruit_bid, _ = list(starfruit_order_depth.buy_orders.items())[0]
+        # Extract the best  ask and bid
+        best_ask, _ = list(order_depth.sell_orders.items())[0]
+        best_bid, _ = list(order_depth.buy_orders.items())[0]
 
-        # Add the starfruit midprice to starfruit_cache
-        self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
+        # Add the product midprice and timestamp to relevant cache
+        match product:
+            case "STARFRUIT":
+                self.starfruit_cache.append((best_ask + best_bid)/2)
+                self.starfruit_time_cache.append(state.timestamp)
 
-    # This method is called at every timestamp -> it handles all the buy and sell orders, and ouputs a list of orders to be sent
+    # Calculates regression when given the times and prices, and a timestamp to predict the price of
+    def calculate_regression(self, times: list[int], prices: list[int], timestamp: int):
+        data = pd.DataFrame({"times": times, "prices": prices})
+
+        # Convert DataFrame columns to NumPy arrays for calculations
+        X = np.array(data["times"])
+        Y = np.array(data["prices"])
+
+        # Calculate the mean of x and y
+        mean_x = np.mean(X)
+        mean_y = np.mean(Y)
+
+        # Calculate the slope (m)
+        m = np.sum((X - mean_x) * (Y - mean_y)) / np.sum((X - mean_x) ** 2)
+
+        # Calculate the intercept (c)
+        c = mean_y - m * mean_x
+
+        return m * timestamp + c
+
+    # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
 
         # logger.print is a special print() that allows us to use the visualiser 
@@ -119,40 +144,41 @@ class Trader:
         # Remove starfruit prices from cache if there are too many ()
         if (len(self.starfruit_cache) == self.starfruit_cache_num): 
             self.starfruit_cache.pop(0)
+            self.starfruit_time_cache.pop(0)
         
         self.cache_product("STARFRUIT", state)
-        
+
         # Do the actual buying and selling
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
 
             # Sets acceptable prices to buy
-            if product == "AMETHYSTS":
-                acceptable_price = 10000
-            else:  # For starfruit price MAKE THIS PRICE CHANGE ACCORDING TO MOVING AVERAGE
-                acceptable_price = sum(self.starfruit_cache)/self.starfruit_cache_num
+            if product == "AMETHYSTS": 
+                acceptable_price = 10000 # Amethyst price is static, therefore static acceptable price
+            elif product == "STARFRUIT":
+                # Price is based on average of last 20 midprices
+                #acceptable_price = sum(self.starfruit_cache)/self.starfruit_cache_num
+                acceptable_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 100)
 
-            # logger.print("Acceptable price : " + str(acceptable_price))
-            # logger.print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
-    
-            # BUYING 
+            # Do the BUYING 
             if len(order_depth.sell_orders) != 0:
                 best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
                 if int(best_ask) < acceptable_price:
                     logger.print("BUY", str(-best_ask_amount) + "x", best_ask)
                     orders.append(Order(product, best_ask, -best_ask_amount))
     
-            # SELLING
+            # Do the SELLING
             if len(order_depth.buy_orders) != 0:
                 best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
                 if int(best_bid) > acceptable_price:
                     logger.print("SELL", str(best_bid_amount) + "x", best_bid)
                     orders.append(Order(product, best_bid, -best_bid_amount))
             
+            # Add the orders of the corresponding product to result
             result[product] = orders
         
-        trader_data = "" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
+        trader_data = "" # String value holding Trader state data required. Delivered as TradingState.traderData on next execution.
 
         conversions = 0
         logger.flush(state, result, conversions, trader_data)
