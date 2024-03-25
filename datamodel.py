@@ -1,3 +1,4 @@
+# Data model taken directly from the Wiki - this is the data model that we can use to see how the data is provided
 import json
 from typing import Dict, List
 from json import JSONEncoder
