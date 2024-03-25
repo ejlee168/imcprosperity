@@ -91,25 +91,48 @@ logger = Logger()
 
 class Trader:
 
+    # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
-    starfruit_cache_num = 20
+    starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
-    def run(self, state: TradingState):
-        # Only method required. It takes all buy and sell orders for all symbols as an input, and outputs a list of orders to be sent
-        logger.print("traderData: " + state.traderData)
-        logger.print("Observations: " + str(state.observations))
-        result = {}
+    def cache_product(self, product: Symbol, state: TradingState):
+        # Get the order depths of starfruit
+        starfruit_order_depth: OrderDepth = state.order_depths["STARFRUIT"]
 
-        # Remove starfruit prices from cache
-        if (len(self.starfruit_cache) == self.starfruit_cache_num): 
-            self.starfruit_cache.pop(0)
+        # Extract the best starfruit ask and bid
+        best_starfruit_ask, _ = list(starfruit_order_depth.sell_orders.items())[0]
+        best_starfruit_bid, _ = list(starfruit_order_depth.buy_orders.items())[0]
 
-        order_depth: OrderDepth = state.order_depths["STARFRUIT"]
-
-        best_starfruit_ask, _ = list(order_depth.sell_orders.items())[0]
-        best_starfruit_bid, _ = list(order_depth.buy_orders.items())[0]
+        # Add the starfruit midprice to starfruit_cache
         self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
 
+    # This method is called at every timestamp -> it handles all the buy and sell orders, and ouputs a list of orders to be sent
+    def run(self, state: TradingState):
+
+        # logger.print is a special print() that allows us to use the visualiser 
+        logger.print("traderData: " + state.traderData)
+        logger.print("Observations: " + str(state.observations))
+
+        # Dictionary that will end up storing all the orders of each product
+        result = {}
+
+        # Remove starfruit prices from cache if there are too many ()
+        if (len(self.starfruit_cache) == self.starfruit_cache_num): 
+            self.starfruit_cache.pop(0)
+        
+        self.cache_product("STARFRUIT", state)
+
+        # # Get the order depths of starfruit
+        # starfruit_order_depth: OrderDepth = state.order_depths["STARFRUIT"]
+
+        # # Extract the best starfruit ask and bid
+        # best_starfruit_ask, _ = list(starfruit_order_depth.sell_orders.items())[0]
+        # best_starfruit_bid, _ = list(starfruit_order_depth.buy_orders.items())[0]
+
+        # # Add the starfruit midprice to starfruit_cache
+        # self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
+
+        # Do the actual buying and selling
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
             orders: List[Order] = []
