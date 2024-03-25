@@ -104,8 +104,10 @@ class Trader:
         if (len(self.starfruit_cache) == self.starfruit_cache_num): 
             self.starfruit_cache.pop(0)
 
-        best_starfruit_ask, _ = list(state.order_depth["STARFRUIT"].sell_orders.items())[0]
-        best_starfruit_bid, _ = list(state.order_depth["STARFRUIT"].buy_orders.items())[0]
+        order_depth: OrderDepth = state.order_depths["STARFRUIT"]
+
+        best_starfruit_ask, _ = list(state.order_depth.sell_orders.items())[0]
+        best_starfruit_bid, _ = list(state.order_depth.buy_orders.items())[0]
         self.starfruit_cache.append((best_starfruit_ask + best_starfruit_bid)/2)
 
         for product in state.order_depths:
