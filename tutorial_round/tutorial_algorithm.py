@@ -90,7 +90,7 @@ class Logger:
 logger = Logger()
 
 class Trader:
-
+    
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
