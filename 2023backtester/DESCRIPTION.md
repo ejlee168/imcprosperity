@@ -94,7 +94,7 @@ class Trader:
 ```
 Now calls to `self.logger.flush` will be visible in the log files and available to the visualizer.
 Thus it can also provide you diagrams about prices, volumes etc.
-A working example is given in [dontlooseshells.py](./dontlooseshells.py).
+A working example is given in [Empty algorithm.py](./Empty algorithm.py).
 
 
 ## Profit and Loss (PnL)

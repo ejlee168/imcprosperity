@@ -1,5 +1,5 @@
-from dontlooseshells_algo import Trader
-
+# from test_algo import Trader # This is what which algorithm to test
+from Empty_algorithm import Trader
 from datamodel import *
 from typing import Any  #, Callable
 import numpy as np
@@ -15,9 +15,11 @@ from datetime import datetime
 TIME_DELTA = 100
 # Please put all! the price and log files into
 # the same directory or adjust the code accordingly
-TRAINING_DATA_PREFIX = "./training"
+TRAINING_DATA_PREFIX = "./2023backtester/training"
 
 ALL_SYMBOLS = [
+    'STARFRUIT'
+    'AMETHYST'
     'PEARLS',
     'BANANAS',
     'COCONUTS',
@@ -31,6 +33,8 @@ ALL_SYMBOLS = [
     'PICNIC_BASKET'
 ]
 POSITIONABLE_SYMBOLS = [
+    'STARFRUIT'
+    'AMETHYST'
     'PEARLS',
     'BANANAS',
     'COCONUTS',
@@ -42,6 +46,7 @@ POSITIONABLE_SYMBOLS = [
     'UKULELE',
     'PICNIC_BASKET'
 ]
+tute_round = ['STARFRUIT', 'AMETHYST']
 first_round = ['PEARLS', 'BANANAS']
 snd_round = first_round + ['COCONUTS',  'PINA_COLADAS']
 third_round = snd_round + ['DIVING_GEAR', 'DOLPHIN_SIGHTINGS', 'BERRIES']
@@ -49,6 +54,7 @@ fourth_round = third_round + ['BAGUETTE', 'DIP', 'UKULELE', 'PICNIC_BASKET']
 fifth_round = fourth_round # + secret, maybe pirate gold?
 
 SYMBOLS_BY_ROUND = {
+    0: tute_round,
     1: first_round,
     2: snd_round,
     3: third_round,
@@ -56,6 +62,7 @@ SYMBOLS_BY_ROUND = {
     5: fifth_round,
 }
 
+tute_round_pst = ['STARFRUIT', 'AMETHYST']
 first_round_pst = ['PEARLS', 'BANANAS']
 snd_round_pst = first_round_pst + ['COCONUTS',  'PINA_COLADAS']
 third_round_pst = snd_round_pst + ['DIVING_GEAR', 'BERRIES']
@@ -63,6 +70,7 @@ fourth_round_pst = third_round_pst + ['BAGUETTE', 'DIP', 'UKULELE', 'PICNIC_BASK
 fifth_round_pst = fourth_round_pst # + secret, maybe pirate gold?
 
 SYMBOLS_BY_ROUND_POSITIONABLE = {
+    0: tute_round_pst,
     1: first_round_pst,
     2: snd_round_pst,
     3: third_round_pst,
@@ -132,6 +140,8 @@ def process_trades(df_trades, states: dict[int, TradingState], time_limit, names
     return states
        
 current_limits = {
+    'STARFRUIT': 20,
+    'AMETHYST': 20,
     'PEARLS': 20,
     'BANANAS': 20,
     'COCONUTS': 600,
@@ -362,7 +372,6 @@ def monkey_positions(monkey_names: list[str], states: dict[int, TradingState], r
                     balance_by_symbol[time + FLEX_TIME_DELTA][monkey][osymbol] = 0
         monkey_positions_by_timestamp[time] = copy.deepcopy(monkey_positions)
     return profit_balance, trades_by_round, profits_by_symbol, balance_by_symbol, monkey_positions_by_timestamp
-
 
 def cleanup_order_volumes(org_orders: List[Order]) -> List[Order]:
     orders = []
