@@ -96,6 +96,11 @@ class Trader:
     starfruit_time_cache = []
     starfruit_cache_num = 23 # change this value to adjust the 'lag'
 
+    # Amethyst cache to store amethysts
+    amethyst_cache = []
+    amethyst_time_cache = []
+    amethyst_cache_num = 23 # change this value to adjust the 'lag'
+
     # Helper function to cache the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
         # Get the order depths of product
@@ -110,6 +115,17 @@ class Trader:
             case "STARFRUIT":
                 self.starfruit_cache.append((best_ask + best_bid)/2)
                 self.starfruit_time_cache.append(state.timestamp)
+            case "AMETHYSTS":
+                self.amethyst_cache.append((best_ask + best_bid)/2)
+                self.amethyst_time_cache.append(state.timestamp)
+
+    def get_RSI(self, state: TradingState):
+        
+        '''
+            GAIN: if current mid price > previous mid price = store currentprice - previous mid price
+            LOSS: if current mid price < previous mid price = store previous mid price - currentprice
+        '''
+        return
 
     # Calculates regression when given the times and prices, and a timestamp to predict the price of
     def calculate_regression(self, times: list[int], prices: list[int], timestamp: int):
@@ -147,6 +163,13 @@ class Trader:
         
         self.cache_product("STARFRUIT", state)
 
+        # Do the same thing for amethyst
+        if (len(self.amethyst_cache) == self.amethyst_cache_num): 
+            self.amethyst_cache.pop(0)
+            self.amethyst_time_cache.pop(0)
+        
+        self.cache_product("AMETHYSTS", state)
+
         # Do the actual buying and selling
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
@@ -157,9 +180,25 @@ class Trader:
 
             # Sets acceptable prices to buy
             if product == "AMETHYSTS": 
-                acceptable_price = 10000 # Amethyst price is static, therefore static acceptable price
-            elif product == "STARFRUIT":
+                # Price is based on regression prediction of next timestamp, otherwise average sum
+                predicted_price = self.calculate_regression(self.amethyst_time_cache, self.amethyst_cache, state.timestamp + 100)
 
+                # When the timestamp is not 0 and the price can be predicted with regression
+                if (state.timestamp != 0 and predicted_price != -1): 
+                    acceptable_price = round(predicted_price, 5)
+
+                elif (state.timestamp == 0): # When the timestamp is 0, set price to 5000
+                    acceptable_price = 10000
+
+                else: # when the  price cannot be predicted with regression, then use moving average midprice
+                    acceptable_price = round(sum(self.amethyst_cache)/self.amethyst_cache_num, 5)
+               
+                logger.print("Amethyst cache num", self.amethyst_cache_num)
+                logger.print("Amethyst acceptable price ", acceptable_price)
+                logger.print("Best ask: ", best_ask)
+                logger.print("Best bid: ", best_bid)
+
+            elif product == "STARFRUIT":
                 # Price is based on regression prediction of next timestamp, otherwise average sum
                 predicted_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 100)
 
