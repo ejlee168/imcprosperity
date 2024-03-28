@@ -1,0 +1,76 @@
+Sandbox logs:
+0 OpenBLAS WARNING - could not determine the L2 cache size on this system, assuming 256k
+START RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085 Version: $LATEST
+END RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085
+REPORT RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085	Duration: 18.73 ms	Billed Duration: 19 ms	Memory Size: 128 MB	Max Memory Used: 94 MB	Init Duration: 1574.09 ms
+
+0 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4892.0":30,"4893":1},"sell_orders":{"4899":-30}},"PEARLS":{"buy_orders":{"9995.0":30,"9998":1},"sell_orders":{"10005":-30}}},"own_trades":{"BANANAS":[],"PEARLS":[]},"position":{"BANANAS":0,"PEARLS":0},"timestamp":0}}
+100 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[{"buyer":"Paris","price":10002.0,"quantity":1,"seller":"Camilla","symbol":"PEARLS","timestamp":100}]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4892":31},"sell_orders":{"4896":-7,"4898.0":-31}},"PEARLS":{"buy_orders":{"9995.0":30,"9996":1},"sell_orders":{"10002":-6,"10004.0":-1,"10005.0":-30}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":100}}
+200 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4892":22},"sell_orders":{"4899":-22}},"PEARLS":{"buy_orders":{"9995.0":21,"9996":1},"sell_orders":{"10004":-1,"10005.0":-21}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":200}}
+300 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[{"buyer":"Charlie","price":9998.0,"quantity":2,"seller":"Pablo","symbol":"PEARLS","timestamp":300},{"buyer":"Charlie","price":9998.0,"quantity":1,"seller":"Paris","symbol":"PEARLS","timestamp":300}]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4893":25},"sell_orders":{"4899":-2,"4900.0":-23}},"PEARLS":{"buy_orders":{"9995.0":23,"9996":2},"sell_orders":{"9998":-3,"10004.0":-2,"10005.0":-23}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":300}}
+400 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[{"buyer":"Penelope","price":4899.0,"quantity":9,"seller":"Charlie","symbol":"BANANAS","timestamp":400}],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4893.0":25,"4894":5},"sell_orders":{"4899":-25}},"PEARLS":{"buy_orders":{"9995.0":23,"9996.0":2,"9998":5},"sell_orders":{"10004":-2,"10005.0":-23}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":400}}
+500 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[{"buyer":"Paris","price":4899.0,"quantity":1,"seller":"Charlie","symbol":"BANANAS","timestamp":500}],"PEARLS":[{"buyer":"Paris","price":10004.0,"quantity":1,"seller":"Caesar","symbol":"PEARLS","timestamp":500},{"buyer":"Paris","price":10002.0,"quantity":1,"seller":"Charlie","symbol":"PEARLS","timestamp":500}]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4893":24},"sell_orders":{"4899":-24}},"PEARLS":{"buy_orders":{"9995.0":22,"9996.0":2,"10002":1},"sell_orders":{"10004":-2,"10005.0":-22}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":500}}
+600 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4892":26},"sell_orders":{"4897":-9,"4899.0":-26}},"PEARLS":{"buy_orders":{"9995.0":24,"9996":2},"sell_orders":{"10002":-9,"10004.0":-2,"10005.0":-24}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":600}}
+700 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891.0":27,"4892":7},"sell_orders":{"4898":-27}},"PEARLS":{"buy_orders":{"9995.0":27,"9998":7},"sell_orders":{"10005":-27}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":700}}
+800 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891":26},"sell_orders":{"4898":-26}},"PEARLS":{"buy_orders":{"9995":26},"sell_orders":{"10005":-26}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":800}}
+900 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891.0":27,"4892":2},"sell_orders":{"4898":-29}},"PEARLS":{"buy_orders":{"9995.0":27,"9996":2},"sell_orders":{"10004":-2,"10005.0":-27}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":900}}
+1000 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891":28},"sell_orders":{"4897":-2,"4898.0":-26}},"PEARLS":{"buy_orders":{"9995.0":26,"9996":2},"sell_orders":{"10004":-2,"10005.0":-26}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1000}}
+1100 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891":25},"sell_orders":{"4898":-25}},"PEARLS":{"buy_orders":{"9995.0":23,"9996":2},"sell_orders":{"10004":-2,"10005.0":-23}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1100}}
+1200 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891.0":30,"4892":9},"sell_orders":{"4898":-30}},"PEARLS":{"buy_orders":{"9995.0":28,"9996.0":2,"9998":9},"sell_orders":{"10004":-2,"10005.0":-28}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1200}}
+1300 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890.0":27,"4891":1},"sell_orders":{"4892":-4,"4897.0":-28}},"PEARLS":{"buy_orders":{"9995.0":27,"9996":1},"sell_orders":{"10004":-1,"10005.0":-27}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1300}}
+1400 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[{"buyer":"Caesar","price":4891.0,"quantity":1,"seller":"Paris","symbol":"BANANAS","timestamp":1400}],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890.0":24,"4891":1},"sell_orders":{"4897":-26}},"PEARLS":{"buy_orders":{"9995.0":24,"9996":2},"sell_orders":{"10004":-2,"10005.0":-24}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1400}}
+1500 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[{"buyer":"Paris","price":4896.0,"quantity":1,"seller":"Charlie","symbol":"BANANAS","timestamp":1500}],"PEARLS":[{"buyer":"Paris","price":10002.0,"quantity":1,"seller":"Charlie","symbol":"PEARLS","timestamp":1500}]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890.0":20,"4891.0":2,"4896":1},"sell_orders":{"4897":-22}},"PEARLS":{"buy_orders":{"9995.0":20,"9996.0":2,"10002":1},"sell_orders":{"10004":-2,"10005.0":-20}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1500}}
+1600 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4891":23},"sell_orders":{"4897":-23}},"PEARLS":{"buy_orders":{"9995.0":22,"9996":1},"sell_orders":{"10004":-1,"10005.0":-22}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1600}}
+1700 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[{"buyer":"Penelope","price":10005.0,"quantity":6,"seller":"Charlie","symbol":"PEARLS","timestamp":1700}]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890":27},"sell_orders":{"4893":-2,"4897.0":-27}},"PEARLS":{"buy_orders":{"9995":27},"sell_orders":{"10005":-27}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1700}}
+1800 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890.0":25,"4891":2},"sell_orders":{"4897":-27}},"PEARLS":{"buy_orders":{"9995.0":25,"9996":2},"sell_orders":{"10004":-2,"10005.0":-25}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1800}}
+1900 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890":31},"sell_orders":{"4897":-31}},"PEARLS":{"buy_orders":{"9995.0":29,"9996":2},"sell_orders":{"10004":-2,"10005.0":-29}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":1900}}
+2000 {"logs":"","orders":{},"state":{"listings":{"BANANAS":{"denomination":"1","product":"BANANAS","symbol":"BANANAS"},"PEARLS":{"denomination":"1","product":"PEARLS","symbol":"PEARLS"}},"market_trades":{"BANANAS":[],"PEARLS":[]},"observations":{},"order_depths":{"BANANAS":{"buy_orders":{"4890":26},"sell_orders":{"4895":-7,"4896.0":-1,"4897.0":-25}},"PEARLS":{"buy_orders":{"9995.0":25,"9996":1},"sell_orders":{"10002":-7,"10004.0":-1,"10005.0":-25}}},"own_trades":{},"position":{"BANANAS":0,"PEARLS":0},"timestamp":2000}}
+
+
+Submission logs:
+
+
+Activities log:
+day;timestamp;product;bid_price_1;bid_volume_1;bid_price_2;bid_volume_2;bid_price_3;bid_volume_3;ask_price_1;ask_volume_1;ask_price_2;ask_volume_2;ask_price_3;ask_volume_3;mid_price;profit_and_loss
+0;0;PEARLS;9998;1;9995.0;30;;;10005;-30;;;;;10001.5;0.0
+0;0;BANANAS;4893;1;4892.0;30;;;4899;-30;;;;;4896.0;0.0
+0;100;PEARLS;9996;1;9995.0;30;;;10002;-6;10004.0;-1;10005.0;-30;9999.0;0.0
+0;100;BANANAS;4892;31;;;;;4896;-7;4898.0;-31;;;4894.0;0.0
+0;200;PEARLS;9996;1;9995.0;21;;;10004;-1;10005.0;-21;;;10000.0;0.0
+0;200;BANANAS;4892;22;;;;;4899;-22;;;;;4895.5;0.0
+0;300;PEARLS;9996;2;9995.0;23;;;9998;-3;10004.0;-2;10005.0;-23;9997.0;0.0
+0;300;BANANAS;4893;25;;;;;4899;-2;4900.0;-23;;;4896.0;0.0
+0;400;PEARLS;9998;5;9996.0;2;9995.0;23;10004;-2;10005.0;-23;;;10001.0;0.0
+0;400;BANANAS;4894;5;4893.0;25;;;4899;-25;;;;;4896.5;0.0
+0;500;PEARLS;10002;1;9996.0;2;9995.0;22;10004;-2;10005.0;-22;;;10003.0;0.0
+0;500;BANANAS;4893;24;;;;;4899;-24;;;;;4896.0;0.0
+0;600;PEARLS;9996;2;9995.0;24;;;10002;-9;10004.0;-2;10005.0;-24;9999.0;0.0
+0;600;BANANAS;4892;26;;;;;4897;-9;4899.0;-26;;;4894.5;0.0
+0;700;PEARLS;9998;7;9995.0;27;;;10005;-27;;;;;10001.5;0.0
+0;700;BANANAS;4892;7;4891.0;27;;;4898;-27;;;;;4895.0;0.0
+0;800;PEARLS;9995;26;;;;;10005;-26;;;;;10000.0;0.0
+0;800;BANANAS;4891;26;;;;;4898;-26;;;;;4894.5;0.0
+0;900;PEARLS;9996;2;9995.0;27;;;10004;-2;10005.0;-27;;;10000.0;0.0
+0;900;BANANAS;4892;2;4891.0;27;;;4898;-29;;;;;4895.0;0.0
+0;1000;PEARLS;9996;2;9995.0;26;;;10004;-2;10005.0;-26;;;10000.0;0.0
+0;1000;BANANAS;4891;28;;;;;4897;-2;4898.0;-26;;;4894.0;0.0
+0;1100;PEARLS;9996;2;9995.0;23;;;10004;-2;10005.0;-23;;;10000.0;0.0
+0;1100;BANANAS;4891;25;;;;;4898;-25;;;;;4894.5;0.0
+0;1200;PEARLS;9998;9;9996.0;2;9995.0;28;10004;-2;10005.0;-28;;;10001.0;0.0
+0;1200;BANANAS;4892;9;4891.0;30;;;4898;-30;;;;;4895.0;0.0
+0;1300;PEARLS;9996;1;9995.0;27;;;10004;-1;10005.0;-27;;;10000.0;0.0
+0;1300;BANANAS;4891;1;4890.0;27;;;4892;-4;4897.0;-28;;;4891.5;0.0
+0;1400;PEARLS;9996;2;9995.0;24;;;10004;-2;10005.0;-24;;;10000.0;0.0
+0;1400;BANANAS;4891;1;4890.0;24;;;4897;-26;;;;;4894.0;0.0
+0;1500;PEARLS;10002;1;9996.0;2;9995.0;20;10004;-2;10005.0;-20;;;10003.0;0.0
+0;1500;BANANAS;4896;1;4891.0;2;4890.0;20;4897;-22;;;;;4896.5;0.0
+0;1600;PEARLS;9996;1;9995.0;22;;;10004;-1;10005.0;-22;;;10000.0;0.0
+0;1600;BANANAS;4891;23;;;;;4897;-23;;;;;4894.0;0.0
+0;1700;PEARLS;9995;27;;;;;10005;-27;;;;;10000.0;0.0
+0;1700;BANANAS;4890;27;;;;;4893;-2;4897.0;-27;;;4891.5;0.0
+0;1800;PEARLS;9996;2;9995.0;25;;;10004;-2;10005.0;-25;;;10000.0;0.0
+0;1800;BANANAS;4891;2;4890.0;25;;;4897;-27;;;;;4894.0;0.0
+0;1900;PEARLS;9996;2;9995.0;29;;;10004;-2;10005.0;-29;;;10000.0;0.0
+0;1900;BANANAS;4890;31;;;;;4897;-31;;;;;4893.5;0.0
+0;2000;PEARLS;9996;1;9995.0;25;;;10002;-7;10004.0;-1;10005.0;-25;9999.0;0.0
+0;2000;BANANAS;4890;26;;;;;4895;-7;4896.0;-1;4897.0;-25;4892.5;0.0

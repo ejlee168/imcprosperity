@@ -1,4 +1,4 @@
-from dontlooseshells_algo import Trader
+from empty_algo import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
@@ -15,7 +15,7 @@ from datetime import datetime
 TIME_DELTA = 100
 # Please put all! the price and log files into
 # the same directory or adjust the code accordingly
-TRAINING_DATA_PREFIX = "./training"
+TRAINING_DATA_PREFIX = "./2023backtester/training"
 
 ALL_SYMBOLS = [
     'PEARLS',
@@ -84,7 +84,8 @@ def process_prices(df_prices, round, time_limit) -> dict[int, TradingState]:
             observations: Dict[Product, Observation] = {}
             listings = {}
             depths = {}
-            states[time] = TradingState(time, listings, depths, own_trades, market_trades, position, observations)
+            traderData = ""
+            states[time] = TradingState(traderData, time, listings, depths, own_trades, market_trades, position, observations)
 
         if product not in states[time].position and product in SYMBOLS_BY_ROUND_POSITIONABLE[round]:
             states[time].position[product] = 0
@@ -363,7 +364,6 @@ def monkey_positions(monkey_names: list[str], states: dict[int, TradingState], r
         monkey_positions_by_timestamp[time] = copy.deepcopy(monkey_positions)
     return profit_balance, trades_by_round, profits_by_symbol, balance_by_symbol, monkey_positions_by_timestamp
 
-
 def cleanup_order_volumes(org_orders: List[Order]) -> List[Order]:
     orders = []
     for order_1 in org_orders:
@@ -448,7 +448,7 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
     file_name = uuid.uuid4()
     timest = datetime.timestamp(datetime.now())
     max_time = max(list(states.keys()))
-    log_path = os.path.join('logs', f'{timest}_{file_name}.log')
+    log_path = os.path.join('./2023backtester/logs', f'{timest}_{file_name}.log')
     with open(log_path, 'w', encoding="utf-8", newline='\n') as f:
         f.writelines(log_header)
         f.write('\n')
@@ -510,7 +510,6 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
                         if profits_by_symbol[time].get(symbol) != None:
                             print(f'Final profit for {symbol} = {actual_profit}')
         print(f"\nSimulation on round {round} day {day} for time {max_time} complete")
-
 
 # Adjust accordingly the round and day to your needs
 if __name__ == "__main__":

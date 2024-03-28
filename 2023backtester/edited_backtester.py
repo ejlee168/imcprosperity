@@ -1,5 +1,5 @@
 # from test_algo import Trader # This is what which algorithm to test
-from Empty_algorithm import Trader
+from test_algo import Trader
 from datamodel import *
 from typing import Any  #, Callable
 import numpy as np
@@ -457,7 +457,7 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
     file_name = uuid.uuid4()
     timest = datetime.timestamp(datetime.now())
     max_time = max(list(states.keys()))
-    log_path = os.path.join('logs', f'{timest}_{file_name}.log')
+    log_path = os.path.join('2023backtester/logs', f'{timest}_{file_name}.log')
     with open(log_path, 'w', encoding="utf-8", newline='\n') as f:
         f.writelines(log_header)
         f.write('\n')

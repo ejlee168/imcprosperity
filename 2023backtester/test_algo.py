@@ -6,30 +6,20 @@ import pandas as pd
 
 # Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
-
-    # Set this to true, if u want to create
-    # local logs
-    local: bool 
-    # this is used as a buffer for logs
-    # instead of stdout
-    local_logs: dict[int, str] = {}
-
-    def __init__(self, local=False) -> None:
+    def __init__(self) -> None:
         self.logs = ""
-        self.local = local
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
         self.logs += sep.join(map(str, objects)) + end
 
-    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
-        output = json.dumps({
-            "state": state,
-            "orders": orders,
-            "logs": self.logs,
-        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True)
-        if self.local:
-            self.local_logs[state.timestamp] = output
-        print(output)
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], conversions: int, trader_data: str) -> None:
+        print(json.dumps([
+            self.compress_state(state),
+            self.compress_orders(orders),
+            conversions,
+            trader_data,
+            self.logs,
+        ], cls=ProsperityEncoder, separators=(",", ":")))
 
         self.logs = ""
 
@@ -97,7 +87,7 @@ class Logger:
 
         return compressed
 
-logger = Logger(local=True)
+logger = Logger()
 
 class Trader:
     
