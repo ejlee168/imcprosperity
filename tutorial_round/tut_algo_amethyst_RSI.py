@@ -103,7 +103,6 @@ class Trader:
     amethyst_time_cache = []
     amethyst_cache_num = 14 # RSI generally operates on a 14* trade period 
 
-
     # Helper function to cache the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
         # Get the order depths of product
