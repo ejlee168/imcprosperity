@@ -94,12 +94,12 @@ class Trader:
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
-    starfruit_cache_num = 23 # change this value to adjust the 'lag'
+    starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
-    amethyst_cache_num = 23 # RSI generally operates on a 14* trade period 
+    amethyst_cache_num = 20 # RSI generally operates on a 14* trade period 
 
 
     # Helper function to cache the midprice of a product
@@ -151,25 +151,30 @@ class Trader:
 
         return m * timestamp + c
 
+    # Returns the acceptable_price base on regresion
+    def get_price_regression(self, product: Symbol, time_cache: list[int], cache: list[int], cache_num: int, timestamp, default_price: int):
+        # Price is based on regression prediction of next timestamp, otherwise average sum
+        predicted_price = self.calculate_regression(time_cache, cache, timestamp + 100)
+
+        if (timestamp == 0): # When the timestamp is 0, set price to 5000
+            acceptable_price = default_price
+
+        # When the timestamp is not 0 and the price can be predicted with regression
+        elif (predicted_price != -1): 
+            acceptable_price = round(predicted_price, 5)
+
+        else: # when the price cannot be predicted with regression, then use moving average midprice
+            acceptable_price = round(sum(cache/cache_num, 5))
+
+        logger.print(f"{product} acceptable price {acceptable_price}")
+
+        return acceptable_price
+
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
 
         # Dictionary that will end up storing all the orders of each product
         result = {}
-
-        # Remove starfruit prices from cache if there are too many ()
-        # if (len(self.starfruit_cache) == self.starfruit_cache_num): 
-        #     self.starfruit_cache.pop(0)
-        #     self.starfruit_time_cache.pop(0)
-        
-        # self.cache_product("STARFRUIT", state)
-
-        # # Do the same thing for amethyst
-        # if (len(self.amethyst_cache) == self.amethyst_cache_num): 
-        #     self.amethyst_cache.pop(0)
-        #     self.amethyst_time_cache.pop(0)
-        
-        # self.cache_product("AMETHYSTS", state)
 
         self.handle_cache("STARFRUIT", state, self.starfruit_cache, self.starfruit_time_cache, self.starfruit_cache_num)
         self.handle_cache("AMETHYSTS", state, self.starfruit_cache, self.starfruit_time_cache, self.starfruit_cache_num)
@@ -182,39 +187,38 @@ class Trader:
             best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
             best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
 
-            # Calculate RSI for amethysts
-            if product == "AMETHYSTS": 
-                acceptable_price = 10000
+            # Calculate prices for amethysts
+            if product == "AMETHYSTS":
+                acceptable_price = self.get_price_regression("AMETHYSTS", 
+                                                             self.amethyst_time_cache, 
+                                                             self.amethyst_cache, 
+                                                             self.amethyst_cache_num, 
+                                                             state.timestamp,
+                                                             default_price = 10000)
+
+                logger.print("Amethyst best ask: ", best_ask)
+                logger.print("Amethyst best bid: ", best_bid)
 
             # Calculate prices for starfruit
             elif product == "STARFRUIT":
-                # Price is based on regression prediction of next timestamp, otherwise average sum
-                predicted_price = self.calculate_regression(self.starfruit_time_cache, self.starfruit_cache, state.timestamp + 100)
-
-                # When the timestamp is not 0 and the price can be predicted with regression
-                if (state.timestamp != 0 and predicted_price != -1): 
-                    acceptable_price = round(predicted_price, 5)
-
-                elif (state.timestamp == 0): # When the timestamp is 0, set price to 5000
-                    acceptable_price = 5000
-
-                else: # when the  price cannot be predicted with regression, then use moving average midprice
-                    acceptable_price = round(sum(self.starfruit_cache)/self.starfruit_cache_num, 5)
-               
-                logger.print("Starfruit cache num", self.starfruit_cache_num)
-                logger.print("Starfruit acceptable price ", acceptable_price)
-                logger.print("Best ask: ", best_ask)
-                logger.print("Best bid: ", best_bid)
+                acceptable_price = self.get_price_regression("STARFRUIT", 
+                                                             self.starfruit_time_cache, 
+                                                             self.starfruit_cache, 
+                                                             self.starfruit_cache_num, 
+                                                             state.timestamp,
+                                                             default_price = 5000)
+                logger.print("Starfruit best ask: ", best_ask)
+                logger.print("Starfruit best bid: ", best_bid)
 
             # Do the BUYING 
             if len(order_depth.sell_orders) != 0:
-                if int(best_ask) < acceptable_price:
+                if best_ask < acceptable_price:
                     logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                     orders.append(Order(product, best_ask, -best_ask_amount))
     
             # Do the SELLING
             if len(order_depth.buy_orders) != 0:
-                if int(best_bid) > acceptable_price:
+                if best_bid > acceptable_price:
                     logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                     orders.append(Order(product, best_bid, -best_bid_amount))
 
