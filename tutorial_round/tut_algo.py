@@ -91,15 +91,18 @@ logger = Logger()
 
 class Trader:
     
+    POSITION_LIMIT = {}
+    # Stores cache nums for each product 
+    product_cache_num = {"STARFRUIT" : 20, "AMETHYSTS" : 20}
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
-    starfruit_cache_num = 20 # change this value to adjust the 'lag'
+    #starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
-    amethyst_cache_num = 20 # change this value to adjust the 'lag'
+    #amethyst_cache_num = 20 # change this value to adjust the 'lag'
 
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -119,8 +122,18 @@ class Trader:
                 self.amethyst_cache.append((best_ask + best_bid)/2)
                 self.amethyst_time_cache.append(state.timestamp)
 
+    # Returns the cache num for a product
+    def get_cache_num(self, product: Symbol):
+        match product:
+            case "STARFRUIT":
+                return self.product_cache_num["STARFRUIT"]
+            case "AMETHYSTS":
+                return self.product_cache_num["AMETHYSTS"]
+    
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
-    def handle_cache(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int], cache_num: int):
+    def handle_cache(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
+        cache_num = self.get_cache_num(product)
+        
         # Remove prices from cache if there are too many
         if (len(cache) == cache_num): 
             cache.pop(0)
@@ -153,10 +166,11 @@ class Trader:
         return m * timestamp + c
 
     # Returns the acceptable_price base on regression
-    def get_price_regression(self, product: Symbol, time_cache: list[int], cache: list[int], cache_num: int, timestamp, default_price: int, forecast: int):
+    def get_price_regression(self, product: Symbol, time_cache: list[int], cache: list[int], timestamp, default_price: int, forecast: int):
         # Price is based on regression prediction of next timestamp, otherwise average sum
         predicted_price = self.calculate_regression(time_cache, cache, timestamp + 100 * forecast)
-
+        cache_num = self.get_cache_num(product)
+        
         if (timestamp == 0): # When the timestamp is 0, set price to 5000
             acceptable_price = default_price
 
@@ -177,8 +191,8 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_cache("STARFRUIT", state, self.starfruit_cache, self.starfruit_time_cache, self.starfruit_cache_num)
-        self.handle_cache("AMETHYSTS", state, self.starfruit_cache, self.starfruit_time_cache, self.starfruit_cache_num)
+        self.handle_cache("STARFRUIT", state, self.starfruit_cache, self.starfruit_time_cache)
+        self.handle_cache("AMETHYSTS", state, self.amethyst_cache, self.amethyst_time_cache)
 
         # Do the actual buying and selling
         for product in state.order_depths:
@@ -206,7 +220,6 @@ class Trader:
                 acceptable_price = self.get_price_regression("STARFRUIT", 
                                                              self.starfruit_time_cache, 
                                                              self.starfruit_cache, 
-                                                             self.starfruit_cache_num, 
                                                              state.timestamp,
                                                              default_price = 5000,
                                                              forecast = 1)
