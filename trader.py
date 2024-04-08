@@ -96,6 +96,7 @@ class Trader:
     
     # Stores cache nums for each product 
     product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20}
+
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
