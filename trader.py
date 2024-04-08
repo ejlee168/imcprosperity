@@ -91,18 +91,18 @@ logger = Logger()
 
 class Trader:
     
-    POSITION_LIMIT = {}
+    POSITION_LIMIT = {"STARFRUIT" : 10, "AMETHYSTS" : 10}
+    current_positions = {"STARFRUIT" : 0, "AMETHYSTS" : 0}
+    
     # Stores cache nums for each product 
     product_cache_num = {"STARFRUIT" : 20, "AMETHYSTS" : 20}
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
-    #starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
-    #amethyst_cache_num = 20 # change this value to adjust the 'lag'
 
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -184,7 +184,42 @@ class Trader:
         logger.print(f"{product} acceptable price {acceptable_price}")
 
         return acceptable_price
+    
+    def adjust_positions(self, orders: List[Order], product: str):
+        limit = self.POSITION_LIMIT[product]
+        cur_pos = self.current_positions[product]
+        
+        # separate and sort orders by best price
+        buy_orders = [order for order in orders if order.quantity < 0]
+        sell_orders = [order for order in orders if order.quantity > 0]
+        sorted_buy_orders = sorted(buy_orders, key=lambda x: x.price, reverse=True)
+        sorted_sell_orders = sorted(sell_orders, key=lambda x: x.price)
 
+        # iterate until position limit is reached
+        buy_index = 0
+        sell_index = 0
+
+        while buy_index < len(buy_orders) and sell_index < len(sell_orders):
+            if buy_index < buy_index and sorted_buy_orders[buy_index].quantity + cur_pos < limit:
+                cur_pos += sorted_buy_orders[buy_index].quantity
+                buy_index += 1
+            if sell_index < len(sell_orders) and sorted_sell_orders[sell_index].quantity + cur_pos > -limit:
+                cur_pos -= sorted_sell_orders[sell_index].quantity
+                sell_index += 1
+            
+        while buy_index < len(buy_orders) and sorted_buy_orders[buy_index].quantity + cur_pos < limit:
+            cur_pos += sorted_buy_orders[buy_index].quantity
+            buy_index += 1
+            
+        while sell_index < len(sell_orders) and sorted_sell_orders[sell_index].quantity + cur_pos > -limit:
+            cur_pos -= sorted_sell_orders[sell_index].quantity
+            sell_index += 1
+
+        
+        new_orders = buy_orders[:buy_index+1] + sell_orders[:sell_index+1]
+        
+        return new_orders
+        
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
 
@@ -238,8 +273,11 @@ class Trader:
                     logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                     orders.append(Order(product, best_bid, -best_bid_amount))
 
+            # Adjust positions
+            new_orders = self.adjust_positions(orders, product)
+            
             # Add the orders of the corresponding product to result
-            result[product] = orders
+            result[product] = new_orders
         
         trader_data = "" # String value holding Trader state data. Delivered as TradingState.traderData on next execution.
 
