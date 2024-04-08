@@ -181,8 +181,6 @@ class Trader:
         else: # when the price cannot be predicted with regression, then use moving average midprice
             acceptable_price = round(sum(cache/cache_num, 5))
 
-        logger.print(f"{product} acceptable price {acceptable_price}")
-
         return acceptable_price
 
     # Returns weighted average
@@ -237,7 +235,8 @@ class Trader:
                                                              self.starfruit_cache, 
                                                              state.timestamp,
                                                              default_price = 5000,
-                                                             forecast = 1)
+                                                             forecast = 0)
+                logger.print("Starfruit acceptable price: ", acceptable_price)
                 logger.print("Starfruit best ask: ", best_ask)
                 logger.print("Starfruit best bid: ", best_bid)
 
