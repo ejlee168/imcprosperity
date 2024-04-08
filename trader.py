@@ -186,55 +186,67 @@ class Trader:
         return acceptable_price
     
     def adjust_positions(self, orders: List[Order], product: str):
-        logger.print(f"old orders: {orders}")
+        #logger.print(f"old orders: {orders}")
         limit = self.POSITION_LIMIT[product]
-        logger.print(f"limit: {limit}")
+        #logger.print(f"limit: {limit}")
         cur_pos = self.current_positions[product]
-        logger.print(f"current position: {cur_pos}")
+        #logger.print(f"current position: {cur_pos}")
         
         # separate and sort orders by best price
         buy_orders = [order for order in orders if order.quantity > 0]
         sell_orders = [order for order in orders if order.quantity < 0]
-        sorted_buy_orders = sorted(buy_orders, key=lambda x: x.price, reverse=True)
-        sorted_sell_orders = sorted(sell_orders, key=lambda x: x.price)
-        logger.print(f"sorted buy orders: {sorted_buy_orders}")
-        logger.print(f"sorted sell orders: {sorted_sell_orders}")
+        sorted_buy_orders = sorted(buy_orders, key=lambda x: x.price)
+        sorted_sell_orders = sorted(sell_orders, key=lambda x: x.price, reverse=True)
+        #logger.print(f"sorted buy orders: {sorted_buy_orders}")
+        #logger.print(f"sorted sell orders: {sorted_sell_orders}")
 
         # iterate until position limit is reached
         buy_index = 0
         sell_index = 0
 
         while buy_index < len(buy_orders) and sell_index < len(sell_orders):
-            logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
-            if buy_index < buy_index and sorted_buy_orders[buy_index].quantity + cur_pos < limit:
-                logger.print(f"before buy: {cur_pos}")
+            #logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
+            if buy_index < len(buy_orders):
+                #logger.print(f"before buy: {cur_pos}")
+                if sorted_buy_orders[buy_index].quantity + cur_pos > limit:
+                    diff = limit - cur_pos
+                    sorted_buy_orders[buy_index].quantity = diff 
                 cur_pos += sorted_buy_orders[buy_index].quantity
                 buy_index += 1
-                logger.print(f"after buy: {cur_pos}")
-            if sell_index < len(sell_orders) and sorted_sell_orders[sell_index].quantity + cur_pos > -limit:
-                logger.print(f"before sell: {cur_pos}")
+                #logger.print(f"after buy: {cur_pos}")
+            if sell_index < len(sell_orders):
+                #logger.print(f"before sell: {cur_pos}")
+                if sorted_sell_orders[sell_index].quantity + cur_pos < -limit:
+                    diff = limit - cur_pos
+                    sorted_sell_orders[sell_index].quantity = diff
                 cur_pos += sorted_sell_orders[sell_index].quantity
                 sell_index += 1
-                logger.print(f"after sell: {cur_pos}")
+                #logger.print(f"after sell: {cur_pos}")
             
-        while buy_index < len(buy_orders) and sorted_buy_orders[buy_index].quantity + cur_pos < limit:
-            logger.print(f"before buy: {cur_pos}")
+        while buy_index < len(buy_orders):
+            #logger.print(f"before buy: {cur_pos}")
+            if sorted_buy_orders[buy_index].quantity + cur_pos > limit:
+                    diff = limit - cur_pos
+                    sorted_buy_orders[buy_index].quantity = diff 
             cur_pos += sorted_buy_orders[buy_index].quantity
             buy_index += 1
-            logger.print(f"after buy: {cur_pos}")
+            #logger.print(f"after buy: {cur_pos}")
             
-        while sell_index < len(sell_orders) and sorted_sell_orders[sell_index].quantity + cur_pos > -limit:
-            logger.print(f"before sell: {cur_pos}")
+        while sell_index < len(sell_orders):
+            #logger.print(f"before sell: {cur_pos}")
+            if sorted_sell_orders[sell_index].quantity + cur_pos < -limit:
+                    diff = limit - cur_pos
+                    sorted_sell_orders[sell_index].quantity = diff 
             cur_pos += sorted_sell_orders[sell_index].quantity
             sell_index += 1
-            logger.print(f"after sell: {cur_pos}")
+            #logger.print(f"after sell: {cur_pos}")
 
         # update position and return adjusted orders
-        logger.print(f"final position: {cur_pos}")
+        #logger.print(f"final position: {cur_pos}")
         logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
         self.current_positions[product] = cur_pos
         new_orders = sorted_buy_orders[:buy_index] + sorted_sell_orders[:sell_index]
-        logger.print(f"new orders: {new_orders}")
+        ##logger.print(f"new orders: {new_orders}")
         
         return new_orders
         
