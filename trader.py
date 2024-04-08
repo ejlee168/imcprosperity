@@ -91,18 +91,18 @@ logger = Logger()
 
 class Trader:
     
-    POSITION_LIMIT = {}
+    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20}
+    current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0}
+    
     # Stores cache nums for each product 
-    product_cache_num = {"STARFRUIT" : 20, "AMETHYSTS" : 20}
+    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20}
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
     starfruit_time_cache = []
-    #starfruit_cache_num = 20 # change this value to adjust the 'lag'
 
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
-    #amethyst_cache_num = 20 # change this value to adjust the 'lag'
 
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -126,9 +126,9 @@ class Trader:
     def get_cache_num(self, product: Symbol):
         match product:
             case "STARFRUIT":
-                return self.product_cache_num["STARFRUIT"]
+                return self.product_cache_num['STARFRUIT']
             case "AMETHYSTS":
-                return self.product_cache_num["AMETHYSTS"]
+                return self.product_cache_num['AMETHYSTS']
     
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
     def handle_cache(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
@@ -184,15 +184,84 @@ class Trader:
         logger.print(f"{product} acceptable price {acceptable_price}")
 
         return acceptable_price
+    
+    def adjust_positions(self, orders: List[Order], product: str):
+        #logger.print(f"old orders: {orders}")
+        limit = self.POSITION_LIMIT[product]
+        #logger.print(f"limit: {limit}")
+        cur_pos = self.current_positions[product]
+        #logger.print(f"current position: {cur_pos}")
+        
+        # separate and sort orders by best price
+        buy_orders = [order for order in orders if order.quantity > 0]
+        sell_orders = [order for order in orders if order.quantity < 0]
+        sorted_buy_orders = sorted(buy_orders, key=lambda x: x.price)
+        sorted_sell_orders = sorted(sell_orders, key=lambda x: x.price, reverse=True)
+        #logger.print(f"sorted buy orders: {sorted_buy_orders}")
+        #logger.print(f"sorted sell orders: {sorted_sell_orders}")
 
+        # iterate until position limit is reached
+        buy_index = 0
+        sell_index = 0
+
+        while buy_index < len(buy_orders) and sell_index < len(sell_orders):
+            #logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
+            if buy_index < len(buy_orders):
+                #logger.print(f"before buy: {cur_pos}")
+                if sorted_buy_orders[buy_index].quantity + cur_pos > limit:
+                    diff = limit - cur_pos
+                    sorted_buy_orders[buy_index].quantity = diff 
+                cur_pos += sorted_buy_orders[buy_index].quantity
+                buy_index += 1
+                #logger.print(f"after buy: {cur_pos}")
+            if sell_index < len(sell_orders):
+                #logger.print(f"before sell: {cur_pos}")
+                if sorted_sell_orders[sell_index].quantity + cur_pos < -limit:
+                    diff = limit - cur_pos
+                    sorted_sell_orders[sell_index].quantity = diff
+                cur_pos += sorted_sell_orders[sell_index].quantity
+                sell_index += 1
+                #logger.print(f"after sell: {cur_pos}")
+            
+        while buy_index < len(buy_orders):
+            #logger.print(f"before buy: {cur_pos}")
+            if sorted_buy_orders[buy_index].quantity + cur_pos > limit:
+                    diff = limit - cur_pos
+                    sorted_buy_orders[buy_index].quantity = diff 
+            cur_pos += sorted_buy_orders[buy_index].quantity
+            buy_index += 1
+            #logger.print(f"after buy: {cur_pos}")
+            
+        while sell_index < len(sell_orders):
+            #logger.print(f"before sell: {cur_pos}")
+            if sorted_sell_orders[sell_index].quantity + cur_pos < -limit:
+                    diff = limit - cur_pos
+                    sorted_sell_orders[sell_index].quantity = diff 
+            cur_pos += sorted_sell_orders[sell_index].quantity
+            sell_index += 1
+            #logger.print(f"after sell: {cur_pos}")
+
+        # update position and return adjusted orders
+        #logger.print(f"final position: {cur_pos}")
+        logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
+        self.current_positions[product] = cur_pos
+        new_orders = sorted_buy_orders[:buy_index] + sorted_sell_orders[:sell_index]
+        ##logger.print(f"new orders: {new_orders}")
+        
+        return new_orders
+        
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
-
+        # Update positions
+        for product in self.current_positions:
+            if product in state.position:
+                self.current_positions[product] = state.position[product]
+            
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_cache("STARFRUIT", state, self.starfruit_cache, self.starfruit_time_cache)
-        self.handle_cache("AMETHYSTS", state, self.amethyst_cache, self.amethyst_time_cache)
+        self.handle_cache('STARFRUIT', state, self.starfruit_cache, self.starfruit_time_cache)
+        self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
 
         # Do the actual buying and selling
         for product in state.order_depths:
@@ -203,7 +272,7 @@ class Trader:
             best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
 
             # Calculate price for amethysts
-            if product == "AMETHYSTS":
+            if product == 'AMETHYSTS':
                 # acceptable_price = self.get_price_regression("AMETHYSTS", 
                 #                                              self.amethyst_time_cache, 
                 #                                              self.amethyst_cache, 
@@ -216,8 +285,8 @@ class Trader:
                 logger.print("Amethyst best bid: ", best_bid)
 
             # Calculate price for starfruit
-            elif product == "STARFRUIT":
-                acceptable_price = self.get_price_regression("STARFRUIT", 
+            elif product == 'STARFRUIT':
+                acceptable_price = self.get_price_regression('STARFRUIT', 
                                                              self.starfruit_time_cache, 
                                                              self.starfruit_cache, 
                                                              state.timestamp,
@@ -238,8 +307,11 @@ class Trader:
                     logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                     orders.append(Order(product, best_bid, -best_bid_amount))
 
+            # Adjust positions
+            new_orders = self.adjust_positions(orders, product)
+            
             # Add the orders of the corresponding product to result
-            result[product] = orders
+            result[product] = new_orders
         
         trader_data = "" # String value holding Trader state data. Delivered as TradingState.traderData on next execution.
 
