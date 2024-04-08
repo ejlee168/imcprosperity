@@ -185,6 +185,27 @@ class Trader:
 
         return acceptable_price
 
+    # Returns weighted average
+    def get_price_weighted_average(self, 
+                                    cache: list[int], 
+                                    timestamp: int,
+                                    default_price: int):
+            if (timestamp == 0):
+                return default_price
+
+            cache_size = len(cache)
+
+            sum_of_times = (cache_size*(cache_size + 1)) / 2
+
+            wa = 0
+            weights = [0 for _ in range(cache_size)]
+
+            for i in range(len(cache)):
+                weights[i] = i/sum_of_times
+
+            wa = sum(weight * price for weight, price in zip(weights, cache))
+
+            return wa
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
 
@@ -204,14 +225,8 @@ class Trader:
 
             # Calculate price for amethysts
             if product == "AMETHYSTS":
-                # acceptable_price = self.get_price_regression("AMETHYSTS", 
-                #                                              self.amethyst_time_cache, 
-                #                                              self.amethyst_cache, 
-                #                                              self.amethyst_cache_num, 
-                #                                              state.timestamp,
-                #                                              default_price = 10000,
-                #                                              forecast = 1)
-                acceptable_price = 10000
+                acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+                logger.print("Amethyst acceptable price: ", acceptable_price)
                 logger.print("Amethyst best ask: ", best_ask)
                 logger.print("Amethyst best bid: ", best_bid)
 
