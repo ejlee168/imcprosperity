@@ -270,9 +270,89 @@ class Trader:
         ##logger.print(f"new orders: {new_orders}")
         
         return new_orders
+
+    def compute_amethyst_orders(self, state):
+        product = "AMETHYSTS"
+        order_depth: OrderDepth = state.order_depths[product]
+        orders: List[Order] = []
+
+        best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
+        best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
+
+        # Calculate price for amethysts
+        acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+        logger.print("Amethyst acceptable price: ", acceptable_price)
+        logger.print("Amethyst best ask: ", best_ask)
+        logger.print("Amethyst best bid: ", best_bid)
+
+        # Market TAKING:
+        # Do the BUYING 
+        if len(order_depth.sell_orders) != 0:
+            logger.print("best ask: ", best_ask_amount)
+            if best_ask <= acceptable_price:
+                logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
+                orders.append(Order(product, best_ask, -best_ask_amount))
+
+        # Do the SELLING
+        if len(order_depth.buy_orders) != 0:
+            logger.print("best bid: ", best_bid_amount)
+            if best_bid >= acceptable_price:
+                logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
+                orders.append(Order(product, best_bid, -best_bid_amount))
+
+        # Market MAKING
+        amount = 10
+        if (state.position.get("AMETHYSTS", 0) + amount > self.POSITION_LIMIT["AMETHYSTS"]) or \
+            (state.position.get("AMETHYSTS", 0) - amount < -self.POSITION_LIMIT["AMETHYSTS"]):
+            amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
+
+        spread = 3
+        price = round(self.amethyst_cache[-1], 0) # change this to weighted mid price, at the moment it is just current midprice
+
+        orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
+        orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
+
+        logger.print(orders)
+        return orders
+    
+    def compute_starfruit_orders(self, state):
+        product = "STARFRUIT"
+        order_depth: OrderDepth = state.order_depths[product]
+        orders: List[Order] = []
+
+        best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
+        best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
+
+        # Calculate price for starfruit
+        acceptable_price = self.get_price_regression('STARFRUIT', 
+                                                        self.starfruit_time_cache, 
+                                                        self.starfruit_cache, 
+                                                        state.timestamp,
+                                                        default_price = 5000,
+                                                        forecast = 0)
+        logger.print("Starfruit acceptable price: ", acceptable_price)
+        logger.print("Starfruit best ask: ", best_ask)
+        logger.print("Starfruit best bid: ", best_bid)
+
+        # Do the BUYING 
+        if len(order_depth.sell_orders) != 0:
+            logger.print("best ask: ", best_ask_amount)
+            if best_ask <= acceptable_price:
+                logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
+                orders.append(Order(product, best_ask, -best_ask_amount))
+
+        # Do the SELLING
+        if len(order_depth.buy_orders) != 0:
+            logger.print("best bid: ", best_bid_amount)
+            if best_bid >= acceptable_price:
+                logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
+                orders.append(Order(product, best_bid, -best_bid_amount))
         
+        return orders
+
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
+
         # Update positions
         for product in self.current_positions:
             if product in state.position:
@@ -280,85 +360,19 @@ class Trader:
             
         # Dictionary that will end up storing all the orders of each product
         result = {}
-
+        
+        # Handle cache for starfruit and amethyst
         self.handle_cache('STARFRUIT', state, self.starfruit_cache, self.starfruit_time_cache)
         self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
 
-        # Do the actual buying and selling
-        for product in state.order_depths:
-            order_depth: OrderDepth = state.order_depths[product]
-            orders: List[Order] = []
+        # Get amethyst orders
+        amethyst_orders = self.compute_amethyst_orders(state)
+        result["AMETHYSTS"] = self.adjust_positions(amethyst_orders, "AMETHYSTS")
 
-            best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
-            best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
+        # Get starfruit orders
+        starfruit_orders = self.compute_starfruit_orders(state)
+        result["STARFRUIT"] = self.adjust_positions(starfruit_orders, "STARFRUIT")
 
-            # Calculate price for amethysts
-            if product == "AMETHYSTS":
-                # acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
-                acceptable_price = 10000
-                logger.print("Amethyst acceptable price: ", acceptable_price)
-                logger.print("Amethyst best ask: ", best_ask)
-                logger.print("Amethyst best bid: ", best_bid)
-
-                # Market TAKING:
-                # Do the BUYING 
-                if len(order_depth.sell_orders) != 0:
-                    logger.print("best ask: ", best_ask_amount)
-                    if best_ask <= acceptable_price:
-                        logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
-                        orders.append(Order(product, best_ask, -best_ask_amount))
-        
-                # Do the SELLING
-                if len(order_depth.buy_orders) != 0:
-                    logger.print("best bid: ", best_bid_amount)
-                    if best_bid >= acceptable_price:
-                        logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
-                        orders.append(Order(product, best_bid, -best_bid_amount))
-
-                # Market MAKING
-                amount = 10
-                if (state.position.get("AMETHYSTS", 0) + amount > self.POSITION_LIMIT["AMETHYSTS"]) or \
-                   (state.position.get("AMETHYSTS", 0) - amount < -self.POSITION_LIMIT["AMETHYSTS"]):
-                    amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
-
-                spread = 3
-                price = 10000 # change this to weighted mid price 
-
-                orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
-                orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
-
-            # Calculate price for starfruit
-            elif product == 'STARFRUIT':
-                acceptable_price = self.get_price_regression('STARFRUIT', 
-                                                             self.starfruit_time_cache, 
-                                                             self.starfruit_cache, 
-                                                             state.timestamp,
-                                                             default_price = 5000,
-                                                             forecast = 0)
-                logger.print("Starfruit acceptable price: ", acceptable_price)
-                logger.print("Starfruit best ask: ", best_ask)
-                logger.print("Starfruit best bid: ", best_bid)
-
-                # Do the BUYING 
-                if len(order_depth.sell_orders) != 0:
-                    logger.print("best ask: ", best_ask_amount)
-                    if best_ask <= acceptable_price:
-                        logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
-                        orders.append(Order(product, best_ask, -best_ask_amount))
-        
-                # Do the SELLING
-                if len(order_depth.buy_orders) != 0:
-                    logger.print("best bid: ", best_bid_amount)
-                    if best_bid >= acceptable_price:
-                        logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
-                        orders.append(Order(product, best_bid, -best_bid_amount))
-
-            # Adjust positions
-            new_orders = self.adjust_positions(orders, product)
-            
-            # Add the orders of the corresponding product to result
-            result[product] = new_orders
-        
         trader_data = "" # String value holding Trader state data. Delivered as TradingState.traderData on next execution.
 
         conversions = 0
