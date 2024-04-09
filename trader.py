@@ -294,7 +294,8 @@ class Trader:
 
             # Calculate price for amethysts
             if product == "AMETHYSTS":
-                acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+                # acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+                acceptable_price = 10000
                 logger.print("Amethyst acceptable price: ", acceptable_price)
                 logger.print("Amethyst best ask: ", best_ask)
                 logger.print("Amethyst best bid: ", best_bid)
@@ -320,8 +321,11 @@ class Trader:
                    (state.position.get("AMETHYSTS", 0) - amount < -self.POSITION_LIMIT["AMETHYSTS"]):
                     amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
 
-                orders.append(Order("AMETHYSTS", 9997, amount)) # Want to buy at 9996
-                orders.append(Order("AMETHYSTS", 10003, -amount)) # Want to sell at 10003 - SELL should be negative for market making
+                spread = 3
+                price = 10000 # change this to weighted mid price 
+
+                orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
+                orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
 
             # Calculate price for starfruit
             elif product == 'STARFRUIT':
