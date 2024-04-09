@@ -288,14 +288,12 @@ class Trader:
         # Market TAKING:
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
-            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
@@ -336,14 +334,12 @@ class Trader:
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
-            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
