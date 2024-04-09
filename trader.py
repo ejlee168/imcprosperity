@@ -305,12 +305,11 @@ class Trader:
             amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
 
         spread = 3
-        price = round(self.amethyst_cache[-1], 0) # change this to weighted mid price, at the moment it is just current midprice
+        price = int(self.amethyst_cache[-1]) # change this to weighted mid price, at the moment it is just current midprice
 
         orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
         orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
 
-        logger.print(orders)
         return orders
     
     def compute_starfruit_orders(self, state):
