@@ -176,10 +176,10 @@ class Trader:
 
         # When the timestamp is not 0 and the price can be predicted with regression
         elif (predicted_price != -1): 
-            acceptable_price = int(predicted_price)
+            acceptable_price = predicted_price
 
         else: # when the price cannot be predicted with regression, then use average midprice
-            acceptable_price = int(sum(cache)/len(cache))
+            acceptable_price = sum(cache)/len(cache)
 
         return acceptable_price
       
@@ -323,7 +323,7 @@ class Trader:
         if (state.position.get(product, 0) < -10):
             ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        spread = 3
+        spread = 2
 
         # if (best_ask > acceptable_price) or (best_bid < acceptable_price):
         #     # price is midprice if there is no price mismatch
@@ -339,7 +339,7 @@ class Trader:
         # Send a buy order
         orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9996
 
-        # Send a sell order
+        # # Send a sell order
         orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
 
         return orders
