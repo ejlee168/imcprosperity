@@ -121,9 +121,9 @@ class Trader:
         return serialised_data
     
     def deserialize_data(self, string: str):
-        if string != "":
-            data = jsonpickle.decode(string)
-            print("decoded: ", data)
+        data = jsonpickle.decode(string)
+        for attr_name, attr_value in data.items():
+            setattr(Trader, attr_name, attr_value)
                 
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -433,9 +433,11 @@ class Trader:
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
+        # update caches
         if state.traderData != "":
-            logger.print("trader: ", state.traderData)
+            #logger.print("trader: ", state.traderData)
             self.deserialize_data(state.traderData)
+        
         # Update positions
         for product in self.current_positions:
             if product in state.position:
