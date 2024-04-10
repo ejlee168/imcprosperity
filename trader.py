@@ -317,8 +317,6 @@ class Trader:
         # Calculate price for amethysts
         acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
         logger.print("Amethyst acceptable price: ", acceptable_price)
-        logger.print("Amethyst best ask: ", best_ask)
-        logger.print("Amethyst best bid: ", best_bid)
 
         # Market TAKING:
         # Do the BUYING 
@@ -345,16 +343,16 @@ class Trader:
             ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 3
-        # spread = self.get_spread(self.amethyst_cache)
         price = 10000
+        undercut = 1
 
         if not (best_ask <= acceptable_price):
-            # Send a buy order
-            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy at 9997
+            # Send a buy order (bots will sell to us at this price)
+            orders.append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) # Want to buy at 9997 -- int(price - spread)
 
         if not (best_bid >= acceptable_price):
-            # Send a sell order
-            orders.append(Order(product, int(price + spread), -ask_amount)) # SELL should be negative for market making
+            # Send a sell order (bots will buy from us at this price)
+            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # SELL should be negative for market making -- int(price + spread)
 
         return orders
     
@@ -398,20 +396,24 @@ class Trader:
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
+            ordered_flag = 0
             if best_ask <= acceptable_price_avg: # Buy based on average price
                 logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
-            elif best_ask <= acceptable_price_regres: # Buy based on regression price
+                ordered_flag = 1
+            elif best_ask <= acceptable_price_regres and not ordered_flag and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"): # Buy based on regression price
                 logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            if best_bid >= acceptable_price_avg:
+            ordered_flag = 0
+            if best_bid >= acceptable_price_avg:    
                 logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
-            elif best_bid >= acceptable_price_regres:
+                ordered_flag = 1
+            elif best_bid >= acceptable_price_regres and not ordered_flag and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"):
                 logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
 
@@ -433,11 +435,15 @@ class Trader:
         price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
         logger.print(price)
 
+        undercut = 1
+
         if not (best_ask <= acceptable_price_avg) or not (best_ask <= acceptable_price_regres):
-            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy -- int(price - spread)
+            # Send a buy order (bots will sell to us at this price)
+            orders.append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) # Want to buy -- int(price - spread)
 
         if not (best_bid >= acceptable_price_avg) or not (best_bid >= acceptable_price_regres):
-            orders.append(Order(product, math.ceil(price + spread), -ask_amount)) # Want to sell --  math.ceil(price + spread) - math.ceil(acceptable_price_avg) - 1)
+            # Send a sell order (bots will buy from us at this price)
+            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # Want to sell --  math.ceil(price + spread) - math.ceil(acceptable_price_avg) - 1)
 
         return orders
         
