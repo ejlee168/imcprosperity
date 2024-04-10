@@ -104,6 +104,10 @@ class Trader:
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
+    
+    # store residual analysis
+    predicted_prices = []
+    residuals = []
 
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
@@ -177,7 +181,6 @@ class Trader:
         # When the timestamp is not 0 and the price can be predicted with regression
         elif (predicted_price != -1): 
             acceptable_price = predicted_price
-
         else: # when the price cannot be predicted with regression, then use average midprice
             acceptable_price = sum(cache)/len(cache)
 
@@ -362,6 +365,17 @@ class Trader:
                                                         state.timestamp,
                                                         default_price = 5000,
                                                         forecast = 1)
+        
+        # get regression residuals for first 100 timestamps
+        if len(self.predicted_prices) != 100:
+            self.predicted_prices.append(acceptable_price)
+        if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
+            self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
+            
+        #logger.print(f"starfruit cache: ", self.starfruit_cache)
+        #logger.print(f"predicted log: ", self.predicted_prices)
+        logger.print(f"residuals: ", self.residuals)
+
         logger.print("Starfruit acceptable price: ", acceptable_price)
         logger.print("Starfruit best ask: ", best_ask)
         logger.print("Starfruit best bid: ", best_bid)
