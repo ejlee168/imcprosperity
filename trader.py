@@ -177,10 +177,10 @@ class Trader:
 
         # When the timestamp is not 0 and the price can be predicted with regression
         elif (predicted_price != -1): 
-            acceptable_price = round(predicted_price, 5)
+            acceptable_price = int(predicted_price)
 
         else: # when the price cannot be predicted with regression, then use moving average midprice
-            acceptable_price = round(sum(cache/cache_num, 5))
+            acceptable_price = int(sum(cache)/cache_num)
 
         return acceptable_price
       
@@ -264,20 +264,28 @@ class Trader:
 
         # update position and return adjusted orders
         #logger.print(f"final position: {cur_pos}")
-        logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
+        # logger.print(f"buy index: {buy_index}, sell index: {sell_index}")
         self.current_positions[product] = cur_pos
         new_orders = sorted_buy_orders[:buy_index] + sorted_sell_orders[:sell_index]
         ##logger.print(f"new orders: {new_orders}")
         
         return new_orders
 
+    def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
+        return sum([price*-volume for price, volume in market_sell_orders] + 
+                   [price*volume for price, volume in market_buy_orders])/sum([-volume for _, volume in market_sell_orders] +
+                                                                               [volume for _, volume in market_buy_orders])
+
     def compute_amethyst_orders(self, state):
         product = "AMETHYSTS"
         order_depth: OrderDepth = state.order_depths[product]
         orders: List[Order] = []
 
-        best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
-        best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
+        market_sell_orders = list(order_depth.sell_orders.items())
+        market_buy_orders = list(order_depth.buy_orders.items())
+
+        best_ask, best_ask_amount = market_sell_orders[0]
+        best_bid, best_bid_amount = market_buy_orders[0]
 
         # Calculate price for amethysts
         acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
@@ -302,17 +310,25 @@ class Trader:
 
         # Market MAKING
         amount = 10
-        if (state.position.get("AMETHYSTS", 0) + amount > self.POSITION_LIMIT["AMETHYSTS"]) or \
-            (state.position.get("AMETHYSTS", 0) - amount < -self.POSITION_LIMIT["AMETHYSTS"]):
-            amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
+        if (state.position.get(product, 0) + amount > self.POSITION_LIMIT[product]) or \
+            (state.position.get(product, 0) - amount < -self.POSITION_LIMIT[product]):
+            amount = self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))
 
         spread = 3
-        price = int(self.amethyst_cache[-1]) # change this to weighted mid price, at the moment it is just current midprice
 
-        orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
-        orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
+        if (best_ask > acceptable_price) or (best_bid < acceptable_price):
+            price = int(self.amethyst_cache[-1]) # change this to weighted mid price? at the moment it is just current midprice
+        elif len(market_sell_orders) > 1 and len(market_buy_orders) > 1:
+            price = (market_sell_orders[1]+market_buy_orders[1])/2 # This is the next best midprice
+        else:
+            price = 10000
 
-        logger.print(orders)
+        # Send a buy order
+        orders.append(Order(product, price - spread, amount)) # Want to buy at 9996
+
+        # Send a sell order
+        orders.append(Order(product, price + spread, -amount)) # SELL should be negative for market making
+
         return orders
     
     def compute_starfruit_orders(self, state):
@@ -320,8 +336,11 @@ class Trader:
         order_depth: OrderDepth = state.order_depths[product]
         orders: List[Order] = []
 
-        best_ask, best_ask_amount = list(order_depth.sell_orders.items())[0]
-        best_bid, best_bid_amount = list(order_depth.buy_orders.items())[0]
+        market_sell_orders = list(order_depth.sell_orders.items())
+        market_buy_orders = list(order_depth.buy_orders.items())
+
+        best_ask, best_ask_amount = market_sell_orders[0]
+        best_bid, best_bid_amount = market_buy_orders[0]
 
         # Calculate price for starfruit
         acceptable_price = self.get_price_regression('STARFRUIT', 
@@ -347,20 +366,25 @@ class Trader:
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
-            
-        # Market MAKING
-        """        
-        amount = 10
-        if (state.position.get("STARFRUIT", 0) + amount > self.POSITION_LIMIT["STARFRUIT"]) or \
-            (state.position.get("STARFRUIT", 0) - amount < -self.POSITION_LIMIT["STARFRUIT"]):
-            amount = self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))
+        
+        # MArket MAKING
+        bid_amount = 10
 
+        if (state.position.get("STARFRUIT", 0) > 10):
+            bid_amount = int((self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))) * 0.5)
 
-        orders.append(Order("STARFRUIT", best_ask - 1, amount)) 
-        orders.append(Order("STARFRUIT", best_bid + 1, -amount)) 
-        """
+        ask_amount = 10
 
-        logger.print(orders)
+        if (state.position.get("STARFRUIT", 0) < -10):
+            ask_amount = int((self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))) * 0.5)
+
+        spread = 2
+        price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
+        logger.print(price)
+
+        orders.append(Order("STARFRUIT", price - spread, bid_amount)) # Want to buy
+        orders.append(Order("STARFRUIT", price + spread, -ask_amount)) # Want to sel
+
         return orders
         
 
