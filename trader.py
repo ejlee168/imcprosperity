@@ -328,17 +328,17 @@ class Trader:
         if (state.position.get(product, 0) < -ask_amount):
             ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        # spread = 3
-        spread = self.get_spread(self.amethyst_cache)
+        spread = 3
+        # spread = self.get_spread(self.amethyst_cache)
         price = 10000
 
         if not (best_ask <= acceptable_price):
             # Send a buy order
-            orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9997
+            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy at 9997
 
         if not (best_bid >= acceptable_price):
             # Send a sell order
-            orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
+            orders.append(Order(product, int(price + spread), -ask_amount)) # SELL should be negative for market making
 
         return orders
     
@@ -353,40 +353,50 @@ class Trader:
         best_ask, best_ask_amount = market_sell_orders[0]
         best_bid, best_bid_amount = market_buy_orders[0]
 
-        # Calculate price for starfruit
-        acceptable_price = self.get_price_regression('STARFRUIT', 
+        # Calculate regression price for starfruit
+        acceptable_price_regres = self.get_price_regression('STARFRUIT', 
                                                         self.starfruit_time_cache, 
                                                         self.starfruit_cache, 
                                                         state.timestamp,
                                                         default_price = 5000, # Maybe make it so that it doesn't trade at timestamp 0?
                                                         forecast = 1)
         
-        # get regression residuals for first 100 timestamps
-        if len(self.predicted_prices) != 100:
-            self.predicted_prices.append(acceptable_price)
-        if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
-            self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
+        # Calculate price of last 5 starfruit
+        acceptable_price_avg = sum(self.starfruit_cache[-5:])/len(self.starfruit_cache[-5:])
+        
+        # # get regression residuals for first 100 timestamps
+        # if len(self.predicted_prices) != 100:
+        #     self.predicted_prices.append(acceptable_price_regres)
+        # if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
+        #     self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
             
         #logger.print(f"starfruit cache: ", self.starfruit_cache)
         #logger.print(f"predicted log: ", self.predicted_prices)
-        logger.print(f"residuals: ", self.residuals)
+        # logger.print(f"residuals: ", self.residuals)
 
-        logger.print("Starfruit acceptable price: ", acceptable_price)
+        logger.print("Starfruit acceptable regres price: ", acceptable_price_regres, ". avg price: ", acceptable_price_avg)
         logger.print("Starfruit best ask: ", best_ask)
         logger.print("Starfruit best bid: ", best_bid)
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
-            if best_ask <= acceptable_price:
-                logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
+            if best_ask <= acceptable_price_avg: # Buy based on average price
+                logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
+            elif best_ask <= acceptable_price_regres: # Buy based on regression price
+                logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
+                orders.append(Order(product, best_ask, -best_ask_amount))
+
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            if best_bid >= acceptable_price:
-                logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
+            if best_bid >= acceptable_price_avg:
+                logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
-        
+            elif best_bid >= acceptable_price_regres:
+                logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
+                orders.append(Order(product, best_bid, -best_bid_amount))
+
         # MArket MAKING
         bid_amount = 10
 
@@ -401,14 +411,15 @@ class Trader:
         # spread = 2
         spread = self.get_spread(self.starfruit_cache)
         logger.print(spread)
+
         price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
         logger.print(price)
 
-        if not (best_ask <= acceptable_price):
-            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy
+        if not (best_ask <= acceptable_price_avg) or not (best_ask <= acceptable_price_regres):
+            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy -- int(price - spread)
 
-        if not (best_bid >= acceptable_price):
-            orders.append(Order(product, math.ceil(price + spread), -ask_amount)) # Want to sell
+        if not (best_bid >= acceptable_price_avg) or not (best_bid >= acceptable_price_regres):
+            orders.append(Order(product, math.ceil(price + spread), -ask_amount)) # Want to sell --  math.ceil(price + spread) - math.ceil(acceptable_price_avg) - 1)
 
         return orders
         
