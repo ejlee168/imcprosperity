@@ -170,8 +170,7 @@ class Trader:
     def get_price_regression(self, product: Symbol, time_cache: list[int], cache: list[int], timestamp, default_price: int, forecast: int):
         # Price is based on regression prediction of next timestamp, otherwise average sum
         predicted_price = self.calculate_regression(time_cache, cache, timestamp + 100 * forecast)
-        cache_num = self.get_cache_num(product)
-        
+
         if (timestamp == 0): # When the timestamp is 0, set price to 5000
             acceptable_price = default_price
 
@@ -179,8 +178,8 @@ class Trader:
         elif (predicted_price != -1): 
             acceptable_price = int(predicted_price)
 
-        else: # when the price cannot be predicted with regression, then use moving average midprice
-            acceptable_price = int(sum(cache)/cache_num)
+        else: # when the price cannot be predicted with regression, then use average midprice
+            acceptable_price = int(sum(cache)/len(cache))
 
         return acceptable_price
       
@@ -271,10 +270,15 @@ class Trader:
         
         return new_orders
 
+    # Returns weighted mid price 
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
                    [price*volume for price, volume in market_buy_orders])/sum([-volume for _, volume in market_sell_orders] +
                                                                                [volume for _, volume in market_buy_orders])
+        # weighted_ask_price = sum([price*-volume for price, volume in market_sell_orders])/sum([-volume for _, volume in market_sell_orders])
+        # weighted_bid_price = sum([price*volume for price, volume in market_buy_orders])/sum([volume for _, volume in market_buy_orders])
+        # return int((weighted_ask_price+weighted_bid_price)/2)
+
 
     def compute_amethyst_orders(self, state):
         product = "AMETHYSTS"
@@ -307,25 +311,34 @@ class Trader:
                 orders.append(Order(product, best_bid, -best_bid_amount))
 
         # Market MAKING
-        amount = 10
-        if (state.position.get(product, 0) + amount > self.POSITION_LIMIT[product]) or \
-            (state.position.get(product, 0) - amount < -self.POSITION_LIMIT[product]):
-            amount = self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))
+        bid_amount = 10
+
+        if (state.position.get(product, 0) > 10):
+            bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+
+        ask_amount = 10
+
+        if (state.position.get(product, 0) < -10):
+            ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 3
 
-        if (best_ask > acceptable_price) or (best_bid < acceptable_price):
-            price = int(self.amethyst_cache[-1]) # change this to weighted mid price? at the moment it is just current midprice
-        elif len(market_sell_orders) > 1 and len(market_buy_orders) > 1:
-            price = (market_sell_orders[1]+market_buy_orders[1])/2 # This is the next best midprice
-        else:
-            price = 10000
+        # if (best_ask > acceptable_price) or (best_bid < acceptable_price):
+        #     # price is midprice if there is no price mismatch
+        #     price = int(self.amethyst_cache[-1]) 
+        # elif len(market_sell_orders) > 1 and len(market_buy_orders) > 1:
+        #     # price is next best midprice if there is one, and there is a price mismatch
+        #     price = (market_sell_orders[1][0]+market_buy_orders[1][0])//2 # This is the next best midprice
+        # else:
+        price = 10000
+
+        logger.print(price)
 
         # Send a buy order
-        orders.append(Order(product, price - spread, amount)) # Want to buy at 9996
+        orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9996
 
         # Send a sell order
-        orders.append(Order(product, price + spread, -amount)) # SELL should be negative for market making
+        orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
 
         return orders
     
@@ -346,7 +359,7 @@ class Trader:
                                                         self.starfruit_cache, 
                                                         state.timestamp,
                                                         default_price = 5000,
-                                                        forecast = 0)
+                                                        forecast = 1)
         logger.print("Starfruit acceptable price: ", acceptable_price)
         logger.print("Starfruit best ask: ", best_ask)
         logger.print("Starfruit best bid: ", best_bid)
@@ -366,20 +379,20 @@ class Trader:
         # MArket MAKING
         bid_amount = 10
 
-        if (state.position.get("STARFRUIT", 0) > 10):
-            bid_amount = int((self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))) * 0.5)
+        if (state.position.get(product, 0) > 10):
+            bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         ask_amount = 10
 
-        if (state.position.get("STARFRUIT", 0) < -10):
-            ask_amount = int((self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))) * 0.5)
+        if (state.position.get(product, 0) < -10):
+            ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 2
         price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
         logger.print(price)
 
-        orders.append(Order("STARFRUIT", price - spread, bid_amount)) # Want to buy
-        orders.append(Order("STARFRUIT", price + spread, -ask_amount)) # Want to sel
+        orders.append(Order(product, price - spread, bid_amount)) # Want to buy
+        orders.append(Order(product, price + spread, -ask_amount)) # Want to sel
 
         return orders
 
