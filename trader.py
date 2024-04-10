@@ -433,8 +433,8 @@ class Trader:
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
-        # update caches
-        if state.traderData != "":
+        # update cache only if information is lost
+        if state.traderData != "" and self.starfruit_cache == []:
             #logger.print("trader: ", state.traderData)
             self.deserialize_data(state.traderData)
         
