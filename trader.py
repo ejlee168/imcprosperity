@@ -3,6 +3,7 @@ from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder
 from typing import Any, List
 import numpy as np
 import pandas as pd
+import math
 
 # Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
@@ -300,14 +301,12 @@ class Trader:
         # Market TAKING:
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
-            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
@@ -316,12 +315,12 @@ class Trader:
         bid_amount = 10
 
         if (state.position.get(product, 0) > 10):
-            bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+            bid_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         ask_amount = 10
 
         if (state.position.get(product, 0) < -10):
-            ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+            ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 2
 
@@ -336,10 +335,11 @@ class Trader:
 
         logger.print(price)
 
+        # if not (best_bid >= acceptable_price) or not (best_ask <= acceptable_price):
         # Send a buy order
         orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9996
 
-        # # Send a sell order
+        # Send a sell order
         orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
 
         return orders
@@ -368,14 +368,12 @@ class Trader:
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
-            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
