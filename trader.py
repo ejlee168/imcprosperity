@@ -180,7 +180,7 @@ class Trader:
             acceptable_price = round(predicted_price, 5)
 
         else: # when the price cannot be predicted with regression, then use moving average midprice
-            acceptable_price = round(sum(cache/cache_num, 5))
+            acceptable_price = round(sum(cache)/cache_num, 5)
 
         return acceptable_price
       
@@ -306,9 +306,15 @@ class Trader:
 
         spread = 3
         price = int(self.amethyst_cache[-1]) # change this to weighted mid price, at the moment it is just current midprice
+        # price = 10000
 
-        orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
-        orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
+        if best_ask > acceptable_price:
+            # Send a buy order
+            orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
+        
+        if best_bid < acceptable_price:
+            # Send a sell order
+            orders.append(Order("AMETHYSTS", price + spread, -amount)) # SELL should be negative for market making
 
         return orders
     
