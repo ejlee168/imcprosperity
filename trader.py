@@ -209,6 +209,13 @@ class Trader:
 
             return wa
 
+    def get_spread(self, cache):
+        y = 0.1
+        k = 1.5
+        sd = np.std(cache)
+
+        return y*(sd**2) + 2/y * math.log(1 + y/k)
+    
     def adjust_positions(self, orders: List[Order], product: str):
         #logger.print(f"old orders: {orders}")
         limit = self.POSITION_LIMIT[product]
@@ -279,10 +286,6 @@ class Trader:
         return sum([price*-volume for price, volume in market_sell_orders] + 
                    [price*volume for price, volume in market_buy_orders])/sum([-volume for _, volume in market_sell_orders] +
                                                                                [volume for _, volume in market_buy_orders])
-        # weighted_ask_price = sum([price*-volume for price, volume in market_sell_orders])/sum([-volume for _, volume in market_sell_orders])
-        # weighted_bid_price = sum([price*volume for price, volume in market_buy_orders])/sum([volume for _, volume in market_buy_orders])
-        # return int((weighted_ask_price+weighted_bid_price)/2)
-
 
     def compute_amethyst_orders(self, state):
         product = "AMETHYSTS"
@@ -317,33 +320,25 @@ class Trader:
         # Market MAKING
         bid_amount = 10
 
-        if (state.position.get(product, 0) > 10):
+        if (state.position.get(product, 0) > bid_amount):
             bid_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         ask_amount = 10
 
-        if (state.position.get(product, 0) < -10):
+        if (state.position.get(product, 0) < -ask_amount):
             ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        spread = 2
-
-        # if (best_ask > acceptable_price) or (best_bid < acceptable_price):
-        #     # price is midprice if there is no price mismatch
-        #     price = int(self.amethyst_cache[-1]) 
-        # elif len(market_sell_orders) > 1 and len(market_buy_orders) > 1:
-        #     # price is next best midprice if there is one, and there is a price mismatch
-        #     price = (market_sell_orders[1][0]+market_buy_orders[1][0])//2 # This is the next best midprice
-        # else:
+        # spread = 3
+        spread = self.get_spread(self.amethyst_cache)
         price = 10000
 
-        logger.print(price)
+        if not (best_ask <= acceptable_price):
+            # Send a buy order
+            orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9997
 
-        # if not (best_bid >= acceptable_price) or not (best_ask <= acceptable_price):
-        # Send a buy order
-        orders.append(Order(product, price - spread, bid_amount)) # Want to buy at 9996
-
-        # Send a sell order
-        orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
+        if not (best_bid >= acceptable_price):
+            # Send a sell order
+            orders.append(Order(product, price + spread, -ask_amount)) # SELL should be negative for market making
 
         return orders
     
@@ -363,7 +358,7 @@ class Trader:
                                                         self.starfruit_time_cache, 
                                                         self.starfruit_cache, 
                                                         state.timestamp,
-                                                        default_price = 5000,
+                                                        default_price = 5000, # Maybe make it so that it doesn't trade at timestamp 0?
                                                         forecast = 1)
         
         # get regression residuals for first 100 timestamps
@@ -395,20 +390,25 @@ class Trader:
         # MArket MAKING
         bid_amount = 10
 
-        if (state.position.get(product, 0) > 10):
+        if (state.position.get(product, 0) > bid_amount):
             bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         ask_amount = 10
 
-        if (state.position.get(product, 0) < -10):
+        if (state.position.get(product, 0) < -ask_amount):
             ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        spread = 2
+        # spread = 2
+        spread = self.get_spread(self.starfruit_cache)
+        logger.print(spread)
         price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
         logger.print(price)
 
-        orders.append(Order(product, price - spread, bid_amount)) # Want to buy
-        orders.append(Order(product, price + spread, -ask_amount)) # Want to sel
+        if not (best_ask <= acceptable_price):
+            orders.append(Order(product, int(price - spread), bid_amount)) # Want to buy
+
+        if not (best_bid >= acceptable_price):
+            orders.append(Order(product, math.ceil(price + spread), -ask_amount)) # Want to sell
 
         return orders
         
