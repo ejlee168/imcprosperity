@@ -288,12 +288,14 @@ class Trader:
         # Market TAKING:
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
+            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
+            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
@@ -305,7 +307,7 @@ class Trader:
             amount = self.POSITION_LIMIT["AMETHYSTS"] - abs(state.position.get("AMETHYSTS", 0))
 
         spread = 3
-        price = round(self.amethyst_cache[-1], 0) # change this to weighted mid price, at the moment it is just current midprice
+        price = int(self.amethyst_cache[-1]) # change this to weighted mid price, at the moment it is just current midprice
 
         orders.append(Order("AMETHYSTS", price - spread, amount)) # Want to buy at 9996
         orders.append(Order("AMETHYSTS", price + spread, -amount)) # Want to sell at 10003 - SELL should be negative for market making
@@ -334,17 +336,33 @@ class Trader:
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
+            logger.print("best ask: ", best_ask_amount)
             if best_ask <= acceptable_price:
                 logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
+            logger.print("best bid: ", best_bid_amount)
             if best_bid >= acceptable_price:
                 logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
-        
+            
+        # Market MAKING
+        """        
+        amount = 10
+        if (state.position.get("STARFRUIT", 0) + amount > self.POSITION_LIMIT["STARFRUIT"]) or \
+            (state.position.get("STARFRUIT", 0) - amount < -self.POSITION_LIMIT["STARFRUIT"]):
+            amount = self.POSITION_LIMIT["STARFRUIT"] - abs(state.position.get("STARFRUIT", 0))
+
+
+        orders.append(Order("STARFRUIT", best_ask - 1, amount)) 
+        orders.append(Order("STARFRUIT", best_bid + 1, -amount)) 
+        """
+
+        logger.print(orders)
         return orders
+        
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
