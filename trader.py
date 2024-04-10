@@ -1,4 +1,5 @@
 import json
+import jsonpickle
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 from typing import Any, List
 import numpy as np
@@ -106,9 +107,24 @@ class Trader:
     amethyst_time_cache = []
     
     # store residual analysis
-    predicted_prices = []
-    residuals = []
+    # predicted_prices = []
+    # residuals = []
 
+    # Helper functions to serialise and deserialise data
+    def serialize_to_string(self):
+        data = {}
+        for attr_name, attr_value in vars(Trader).items():
+            if not attr_name.startswith("__") and not callable(attr_value):
+                data[attr_name] = attr_value
+        serialised_data = jsonpickle.encode(data)
+        #logger.print(serialised_data)
+        return serialised_data
+    
+    def deserialize_data(self, string: str):
+        if string != "":
+            data = jsonpickle.decode(string)
+            print("decoded: ", data)
+                
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState):
         # Get the order depths of product
@@ -367,14 +383,14 @@ class Trader:
                                                         forecast = 1)
         
         # get regression residuals for first 100 timestamps
-        if len(self.predicted_prices) != 100:
-            self.predicted_prices.append(acceptable_price)
-        if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
-            self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
+        # if len(self.predicted_prices) != 100:
+        #     self.predicted_prices.append(acceptable_price)
+        # if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
+        #     self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
             
         #logger.print(f"starfruit cache: ", self.starfruit_cache)
         #logger.print(f"predicted log: ", self.predicted_prices)
-        logger.print(f"residuals: ", self.residuals)
+        #logger.print(f"residuals: ", self.residuals)
 
         logger.print("Starfruit acceptable price: ", acceptable_price)
         logger.print("Starfruit best ask: ", best_ask)
@@ -417,7 +433,9 @@ class Trader:
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
-
+        if state.traderData != "":
+            logger.print("trader: ", state.traderData)
+            self.deserialize_data(state.traderData)
         # Update positions
         for product in self.current_positions:
             if product in state.position:
@@ -438,7 +456,8 @@ class Trader:
         starfruit_orders = self.compute_starfruit_orders(state)
         result["STARFRUIT"] = self.adjust_positions(starfruit_orders, "STARFRUIT")
 
-        trader_data = "" # String value holding Trader state data. Delivered as TradingState.traderData on next execution.
+        # serialise data
+        trader_data = self.serialize_to_string() # String value holding Trader state data. Delivered as TradingState.traderData on next execution.
 
         conversions = 0
         logger.flush(state, result, conversions, trader_data)
