@@ -1,3 +1,9 @@
+# THIS IS THE MOST STABLE BUILD SO FAR
+# Website stats:
+# Amethyst:  1674
+# Starfruit: 1656
+# Total:     3330
+
 import json
 import jsonpickle
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
@@ -107,10 +113,6 @@ class Trader:
     amethyst_cache = []
     amethyst_time_cache = []
     
-    # store residual analysis
-    # predicted_prices = []
-    # residuals = []
-
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -377,18 +379,6 @@ class Trader:
         
         # Calculate price of last 5 starfruit
         acceptable_price_avg = sum(self.starfruit_cache[-5:])/len(self.starfruit_cache[-5:])
-        
-        # # get regression residuals for first 100 timestamps
-        # if len(self.predicted_prices) != 100:
-        #     self.predicted_prices.append(acceptable_price_regres)
-
-        # if len(self.starfruit_cache) >= 2 and len(self.residuals) != 100:
-        #     self.residuals.append(self.starfruit_cache[-1] - self.predicted_prices[-2])
-            
-        # logger.print(f"starfruit cache: ", self.starfruit_cache)
-        # logger.print(f"predicted log: ", self.predicted_prices)
-        # logger.print(f"residuals: ", self.residuals)
-
 
         logger.print("Starfruit acceptable regres price: ", acceptable_price_regres, ". avg price: ", acceptable_price_avg)
         logger.print("Starfruit best ask: ", best_ask)
@@ -400,20 +390,18 @@ class Trader:
             if best_ask <= acceptable_price_avg: # Buy based on average price
                 logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
-                ordered_flag = 1
-            elif best_ask <= acceptable_price_regres and not ordered_flag and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"): # Buy based on regression price
+
+            elif best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"): # Buy based on regression price
                 logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
 
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
-            ordered_flag = 0
             if best_bid >= acceptable_price_avg:    
                 logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
-                ordered_flag = 1
-            elif best_bid >= acceptable_price_regres and not ordered_flag and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"):
+            elif best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.get_cache_num("STARFRUIT"):
                 logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_amount))
 
