@@ -386,6 +386,7 @@ class Trader:
 
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
+            ordered_flag = 0
             if best_ask <= acceptable_price_avg: # Buy based on average price
                 logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
                 orders.append(Order(product, best_ask, -best_ask_amount))
