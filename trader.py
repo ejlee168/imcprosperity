@@ -1,9 +1,3 @@
-# THIS IS THE MOST STABLE BUILD SO FAR
-# Website stats:
-# Amethyst:  1674
-# Starfruit: 1656
-# Total:     3330
-
 import json
 import jsonpickle
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
