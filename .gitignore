@@ -4,3 +4,6 @@ __pycache__/
 backtests/
 manual.py
 tests/
+3330_trader.py
+exceed_fix.py
+trader_test.py

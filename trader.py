@@ -317,7 +317,8 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # Calculate price for amethysts
-        acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+        # acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+        acceptable_price = 10000
         logger.print("Amethyst acceptable price: ", acceptable_price)
 
         # Market TAKING:
@@ -419,7 +420,9 @@ class Trader:
         spread = self.get_spread(self.starfruit_cache)
         logger.print(spread)
 
-        price = int(self.get_weighted_midprice(market_sell_orders, market_buy_orders)) # change this to weighted mid price 
+        price = self.get_weighted_midprice(market_sell_orders, market_buy_orders) # change this to weighted mid price 
+        # price = acceptable_price_regres
+        
         logger.print(price)
 
         undercut = 1
