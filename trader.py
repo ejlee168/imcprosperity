@@ -317,8 +317,8 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # Calculate price for amethysts
-        # acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
-        acceptable_price = 10000
+        acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+        # acceptable_price = 10000
         logger.print("Amethyst acceptable price: ", acceptable_price)
 
         # Market TAKING:
