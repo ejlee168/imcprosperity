@@ -317,22 +317,44 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # Calculate price for amethysts
-        acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
-        # acceptable_price = 10000
+        # acceptable_price = sum(self.amethyst_cache)/len(self.amethyst_cache)
+        acceptable_price = 10000
+        # acceptable_price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
         logger.print("Amethyst acceptable price: ", acceptable_price)
 
         # Market TAKING:
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
             if best_ask <= acceptable_price:
-                logger.print(product, " BUY", str(-best_ask_amount) + "x", best_ask)
-                orders.append(Order(product, best_ask, -best_ask_amount))
+                amount = min(-best_ask_amount, self.POSITION_LIMIT["AMETHYSTS"] - state.position.get(product, 0))
+
+                # Market take
+                orders.append(Order(product, best_ask, amount))
+                logger.print(product, " BUY", str(amount) + "x", best_ask)
+
+                # Now market make for 2 or until pos limit at an undercut
+                amount = min(20, self.POSITION_LIMIT["AMETHYSTS"] - (state.position.get(product, 0) + amount))
+                
+                spread = 3
+                orders.append(Order(product, min(int(10000 - spread), best_ask + 1), amount))
+                logger.print(product, " BUY undercut", str(amount) + "x", best_ask)
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
             if best_bid >= acceptable_price:
-                logger.print(product, " SELL", str(best_bid_amount) + "x", best_bid)
-                orders.append(Order(product, best_bid, -best_bid_amount))
+                amount = max(-best_bid_amount, -self.POSITION_LIMIT["AMETHYSTS"] - state.position.get(product, 0))
+
+                # Market take
+                orders.append(Order(product, best_bid, amount))
+                logger.print(product, " SELL", str(amount) + "x", best_bid)
+
+                # Now market make for 2 or untili pos limit at an undercut
+                amount = max(-20, -self.POSITION_LIMIT["AMETHYSTS"] - (state.position.get(product, 0) + amount))
+                
+                spread = 3
+                orders.append(Order(product, max(int(10000 + spread), best_bid - 1), amount))
+                logger.print(product, " SELL", str(amount) + "x", best_bid)
+                
 
         # Market MAKING
         bid_amount = 10
@@ -459,7 +481,7 @@ class Trader:
 
         # Get amethyst orders
         amethyst_orders = self.compute_amethyst_orders(state)
-        result["AMETHYSTS"] = self.adjust_positions(amethyst_orders, "AMETHYSTS")
+        result["AMETHYSTS"] = amethyst_orders
 
         # Get starfruit orders
         starfruit_orders = self.compute_starfruit_orders(state)
