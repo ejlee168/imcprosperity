@@ -93,13 +93,12 @@ logger = Logger()
 
 class Trader:
     
-    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20}
-    current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0}
+    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}
+    current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0, 'ORCHIDS': 0}
     
     # Stores cache nums for each product 
-    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 20}
-
-    signal_cache_num = {"SUNLIGHT" : 20, "HUMIDITY" : 20}
+    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 5}
+    signal_cache_num = {"SUNLIGHT" : 5, "HUMIDITY" : 5}
 
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
@@ -113,6 +112,7 @@ class Trader:
     orchid_cache = []
     orchid_time_cache = []
 
+    observations_cache = {"SUNLIGHT": [], "HUMIDITY": []}
     # sunlight cache
     sunlight_cache = []
     sunlight_time_cache = []
@@ -135,7 +135,7 @@ class Trader:
         data = jsonpickle.decode(string)
         for attr_name, attr_value in data.items():
             setattr(Trader, attr_name, attr_value)
-                
+
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
         # Get the order depths of product
@@ -149,17 +149,35 @@ class Trader:
         cache.append((best_ask + best_bid)/2)
         time_cache.append(state.timestamp)
 
+    def cache_signal(self, signal: Symbol, state: TradingState):
+        observation = state.observations.conversionObservations['ORCHIDS']
+        match signal:
+            case "SUNLIGHT":
+                self.observations_cache[signal].append(observation.sunlight)
+            case "HUMIDITY":
+                self.observations_cache[signal].append(observation.humidity)
+
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
     def handle_cache(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
-        cache_num = self.product_cache_num[product]
+
+        if (product == "STARFRUIT" or product == "AMETHYSTS" or product == "ORCHIDS"):
+            cache_num = self.product_cache_num[product]
+            
+            # Remove prices from cache if there are too many
+            if (len(cache) == cache_num): 
+                cache.pop(0)
+                time_cache.pop(0)
+            
+            # Store midprice of a product
+            self.cache_product(product, state, cache, time_cache)
         
-        # Remove prices from cache if there are too many
-        if (len(cache) == cache_num): 
-            cache.pop(0)
-            time_cache.pop(0)
-        
-        # Store midprice of a product
-        self.cache_product(product, state, cache, time_cache)
+        else:
+            cache_num = self.signal_cache_num[product]
+
+            if (len(self.observations_cache[product]) == cache_num): 
+                self.observations_cache[product].pop(0)
+
+            self.cache_signal(product, state)
 
     # Calculates regression when given the times and prices, and a timestamp to predict the price of
     def calculate_regression(self, times: list[int], prices: list[int], timestamp: int):
@@ -199,14 +217,14 @@ class Trader:
             acceptable_price = sum(cache)/len(cache)
 
         return acceptable_price
-      
+
     def get_spread(self, cache):
         y = 0.1
         k = 1.5
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-    
+
     def adjust_positions(self, orders: List[Order], product: str):
         #logger.print(f"old orders: {orders}")
         limit = self.POSITION_LIMIT[product]
@@ -351,7 +369,7 @@ class Trader:
             orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # SELL should be negative for market making -- int(price + spread)
 
         return orders
-    
+
     def compute_starfruit_orders(self, state):
         product = "STARFRUIT"
         order_depth: OrderDepth = state.order_depths[product]
@@ -423,7 +441,40 @@ class Trader:
             orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
 
         return orders
-        
+
+    # We need some function that calculates orchid prices based on sunlight and humidity
+    def get_orchid_price(self, state):
+        # for now, return nothing
+        return
+
+    def computer_orchid_orders(self, state):
+        product = "ORCHIDS"
+        order_depth: OrderDepth = state.order_depths[product]
+        orders: List[Order] = []
+
+        market_sell_orders = list(order_depth.sell_orders.items())
+        market_buy_orders = list(order_depth.buy_orders.items())
+
+        best_ask, best_ask_amount = market_sell_orders[0]
+        best_bid, best_bid_amount = market_buy_orders[0]
+
+        # price based on mid price for now
+        # acceptable_price = (best_ask + best_bid) / 2# self.get_orchid_price()
+        acceptable_price = 1087
+        logger.print(f"{product} acceptable price: {acceptable_price}")
+
+        ordered = 0
+
+        if best_ask <= acceptable_price: # this is the wrong way around but we just want to see what is happening
+            orders.append(Order(product, best_ask, -best_ask_amount))
+            ordered += -best_ask_amount
+
+        if best_bid >= acceptable_price: # this is the wrong way around but we just want to see what is happening
+            orders.append(Order(product, best_bid, -best_bid_amount))
+            ordered += -best_ask_amount
+
+        return orders, ordered
+
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
@@ -433,7 +484,7 @@ class Trader:
             self.deserialize_data(state.traderData)
         
         # Update positions
-        for product in self.current_posistions:
+        for product in self.current_positions:
             if product in state.position:
                 self.current_positions[product] = state.position[product]
             
@@ -443,20 +494,24 @@ class Trader:
         # Handle cache for starfruit and amethyst
         self.handle_cache('STARFRUIT', state, self.starfruit_cache, self.starfruit_time_cache)
         self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
+        # self.handle_cache('ORCHIDS', state, self.orchid_cache, self.orchid_time_cache)
 
-        self.handle_cache()
+        self.handle_cache('SUNLIGHT', state, [], [])
+        self.handle_cache('HUMIDITY', state, [], [])
 
         # Get amethyst orders
-        amethyst_orders = self.compute_amethyst_orders(state)
-        result["AMETHYSTS"] = amethyst_orders
+        # amethyst_orders = self.compute_amethyst_orders(state)
+        # result["AMETHYSTS"] = amethyst_orders
 
         # Get starfruit orders
-        starfruit_orders = self.compute_starfruit_orders(state)
-        result["STARFRUIT"] = self.adjust_positions(starfruit_orders, "STARFRUIT")
+        # starfruit_orders = self.compute_starfruit_orders(state)
+        # result["STARFRUIT"] = self.adjust_positions(starfruit_orders, "STARFRUIT")
 
         # serialise data
         trader_data = self.serialize_to_string()
 
-        conversions = 0
+        # logger.print(self.observations_cache)
+
+        result["ORCHIDS"], conversions = self.computer_orchid_orders(state) 
         logger.flush(state, result, conversions, trader_data)
         return result, conversions, trader_data
