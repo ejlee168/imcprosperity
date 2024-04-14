@@ -113,6 +113,8 @@ class Trader:
     orchid_time_cache = []
 
     # observations_cache = {"SUNLIGHT": [], "HUMIDITY": []}
+
+    # sunlight_cache = {0: 12312312, 1: 21312903129}
     sunlight_cache = {}
 
     # Helper functions to serialise and deserialise data
@@ -451,11 +453,11 @@ class Trader:
                 return percentage_change
             
             elif (humidity < 60.0):
-                steps = (60.0 - humidity) // 5
+                steps = (60.0 - humidity) / 5
                 return percentage_change - steps * 2
 
             elif (80.0 < humidity):
-                steps = (humidity - 80) // 5
+                steps = (humidity - 80) / 5
                 return percentage_change - steps * 2
 
     def get_sunlight_change(self, state: TradingState):
@@ -464,7 +466,7 @@ class Trader:
         sum = 0
         for hour in range(current_hour + 1):
             sum += self.sunlight_cache[hour]
-        
+
         percentage_change = -4
 
         if sum < 833 * 7 * 2500: # 7 hrs of sunlight
@@ -473,27 +475,27 @@ class Trader:
             return 0
 
     # calculate orchid storage fees 
-    def get_current_storage_fee(self, incoming_side: str, volume: int):
+    def get_current_storage_fee(self):
         storage_fee = 0.1
         return self.current_positions['ORCHIDS'] * storage_fee
 
     # Returns cost of orchid trade
-    def get_orchid_trade_cost(self, observations: Observation, side: str, volume: int):
+    def get_orchid_conversion_cost(self, observations: Observation, conversions: int):
         cost = 0
-        if side == 'buy':
+        if conversions > 0:
             # add cost of orchids (add conversion logic)
             ask_price = observations.conversionObservations['ORCHIDS'].askPrice
-            cost += ask_price * volume
+            cost += ask_price
             # add tariff, transport and storage
-            cost += -observations.conversionObservations['ORCHIDS'].importTariff
-            cost += self.get_orchid_storage_cost('buy', volume) # is this right
-        else:
+            cost += observations.conversionObservations['ORCHIDS'].importTariff
+            # cost += self.get_orchid_storage_cost('buy', conversions) # is this right
+        elif conversions < 0:
             # add cost of orchids (add conversion logic)
             bid_price = observations.conversionObservations['ORCHIDS'].bidPrice
-            cost += bid_price * volume
+            cost += bid_price
             # add tariff, transport and storage
             cost += observations.conversionObservations['ORCHIDS'].exportTariff
-            cost += self.get_orchid_storage_cost('sell', volume) # is this right
+            # cost += self.get_orchid_storage_cost('sell', -conversions) # is this right
 
         cost += observations.conversionObservations['ORCHIDS'].transportFees
         return cost
@@ -513,7 +515,7 @@ class Trader:
         logger.print("Change ", production_percent_change)
         return regression_price
 
-    def computer_orchid_orders(self, state):
+    def computer_orchid_orders(self, state: TradingState):
         product = "ORCHIDS"
         order_depth: OrderDepth = state.order_depths[product]
         orders: List[Order] = []
@@ -525,23 +527,36 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # price based on mid price for now
-        acceptable_price = self.get_orchid_price(state)
+        # acceptable_price = self.get_orchid_price(state)
+        acceptable_price = sum(self.orchid_cache)/len(self.orchid_cache)
         # acceptable_price = 1087
         logger.print(f"{product} acceptable price: {acceptable_price}")
 
         ordered = 0
+        conversions = 0
 
-        if best_ask <= acceptable_price and (state.timestamp/100)%2: # this is the wrong way around but we just want to see what is happening
-            orders.append(Order(product, best_ask, -best_ask_amount))
-            ordered += -best_ask_amount
+        # buy
+        # if best_ask <= acceptable_price: 
+        #     orders.append(Order(product, best_ask, -best_ask_amount))
+        #     ordered += -best_ask_amount
 
-        if best_bid >= acceptable_price and not (state.timestamp/100)%2: # this is the wrong way around but we just want to see what is happening
+        # sell
+        if best_bid >= acceptable_price:
             orders.append(Order(product, best_bid, -best_bid_amount))
-            ordered += -best_ask_amount
+            ordered += -best_bid_amount
 
+        # volume = self.current_positions['ORCHIDS'] - -best_ask_amount # BUG fix this
 
-        return orders, -self.current_positions['ORCHIDS']
+        # foreign_ask = state.observations.conversionObservations['ORCHIDS'].askPrice
+        if best_ask <= acceptable_price: 
+            if self.get_orchid_conversion_cost(state.observations, -best_ask_amount) <= best_ask:
+                conversions = -self.current_positions['ORCHIDS']
 
+        # if best_bid >= acceptable_price:
+        #     if self.get_orchid_conversion_cost(state.observations, -best_bid_amount) >= best_bid * -best_bid_amount:
+        #         conversions = self.current_positions['ORCHIDS']
+
+        return orders, conversions
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
@@ -561,7 +576,7 @@ class Trader:
         # Handle cache for starfruit and amethyst
         self.handle_cache('STARFRUIT', state, self.starfruit_cache, self.starfruit_time_cache)
         self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
-        # self.handle_cache('ORCHIDS', state, self.orchid_cache, self.orchid_time_cache)
+        self.handle_cache('ORCHIDS', state, self.orchid_cache, self.orchid_time_cache)
 
         # self.handle_cache('SUNLIGHT', state, [], [])
         # self.handle_cache('HUMIDITY', state, [], [])
@@ -584,4 +599,5 @@ class Trader:
         result["ORCHIDS"], conversions = self.computer_orchid_orders(state)
 
         logger.flush(state, result, conversions, trader_data)
+
         return result, conversions, trader_data
