@@ -97,7 +97,7 @@ class Trader:
     current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0, 'ORCHIDS': 0}
     
     # Stores cache nums for each product 
-    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 5}
+    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 15}
     # signal_cache_num = {"SUNLIGHT" : 100, "HUMIDITY" : 5}
 
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
@@ -497,14 +497,15 @@ class Trader:
             cost += observations.conversionObservations['ORCHIDS'].exportTariff
             # cost += self.get_orchid_storage_cost('sell', -conversions) # is this right
 
+        cost *= conversions
         cost += observations.conversionObservations['ORCHIDS'].transportFees
         return cost
 
     # We need some function that calculates orchid prices based on sunlight and humidity
     def get_orchid_price(self, state: TradingState):
-        # for now, return nothing
+        # production_percent_change = self.get_humidity_change(state.observations) + self.get_sunlight_change(state)
+        # logger.print("Change ", production_percent_change)
 
-        production_percent_change = self.get_humidity_change(state.observations) + self.get_sunlight_change(state)
         sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
         humidity = state.observations.conversionObservations['ORCHIDS'].humidity
 
@@ -512,7 +513,7 @@ class Trader:
         sunlight_coef = 0.040136744
         humidity_coef = 3.779203831
         regression_price = c + sunlight_coef*sunlight + humidity_coef*humidity
-        logger.print("Change ", production_percent_change)
+
         return regression_price
 
     def computer_orchid_orders(self, state: TradingState):
@@ -527,8 +528,10 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # price based on mid price for now
-        # acceptable_price = self.get_orchid_price(state)
-        acceptable_price = sum(self.orchid_cache)/len(self.orchid_cache)
+        acceptable_price = self.get_orchid_price(state)
+        # acceptable_price = sum(self.orchid_cache)/len(self.orchid_cache)
+        # acceptable_price = (self.get_orchid_conversion_cost(state.observations, -1) + self.get_orchid_conversion_cost(state.observations, 1))/2
+
         # acceptable_price = 1087
         logger.print(f"{product} acceptable price: {acceptable_price}")
 
@@ -536,7 +539,7 @@ class Trader:
         conversions = 0
 
         # buy
-        # if best_ask <= acceptable_price: 
+        # if best_ask <= acceptable_price:
         #     orders.append(Order(product, best_ask, -best_ask_amount))
         #     ordered += -best_ask_amount
 
@@ -547,10 +550,17 @@ class Trader:
 
         # volume = self.current_positions['ORCHIDS'] - -best_ask_amount # BUG fix this
 
-        # foreign_ask = state.observations.conversionObservations['ORCHIDS'].askPrice
-        if best_ask <= acceptable_price: 
-            if self.get_orchid_conversion_cost(state.observations, -best_ask_amount) <= best_ask:
-                conversions = -self.current_positions['ORCHIDS']
+        foreign_ask = state.observations.conversionObservations['ORCHIDS'].askPrice
+
+        bought = 0
+        if best_ask <= acceptable_price or foreign_ask <= acceptable_price: # Not sure if this should be checking both
+            if best_ask <= self.get_orchid_conversion_cost(state.observations, 1):
+                orders.append(Order(product, best_ask, -best_ask_amount))
+                bought += -best_ask_amount
+            else:
+                conversions = -(self.current_positions['ORCHIDS'] + bought)
+
+        # if local better - than buy as many that are profitable otherwise, sell the rest on conversions
 
         # if best_bid >= acceptable_price:
         #     if self.get_orchid_conversion_cost(state.observations, -best_bid_amount) >= best_bid * -best_bid_amount:
@@ -580,8 +590,8 @@ class Trader:
 
         # self.handle_cache('SUNLIGHT', state, [], [])
         # self.handle_cache('HUMIDITY', state, [], [])
-        self.handle_cache_sunlight(state)
-        logger.print(self.sunlight_cache)
+        # self.handle_cache_sunlight(state)
+        # logger.print(self.sunlight_cache)
 
         # Get amethyst orders
         # amethyst_orders = self.compute_amethyst_orders(state)
