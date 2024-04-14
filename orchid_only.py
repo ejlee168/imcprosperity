@@ -98,7 +98,7 @@ class Trader:
     
     # Stores cache nums for each product 
     product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 5}
-    signal_cache_num = {"SUNLIGHT" : 5, "HUMIDITY" : 5}
+    # signal_cache_num = {"SUNLIGHT" : 100, "HUMIDITY" : 5}
 
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
@@ -112,15 +112,9 @@ class Trader:
     orchid_cache = []
     orchid_time_cache = []
 
-    observations_cache = {"SUNLIGHT": [], "HUMIDITY": []}
-    # sunlight cache
-    sunlight_cache = []
-    sunlight_time_cache = []
-    
-    # humidity cache
-    humidity_cache = []
-    humidity_time_cache = []
-    
+    # observations_cache = {"SUNLIGHT": [], "HUMIDITY": []}
+    sunlight_cache = {}
+
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -171,13 +165,18 @@ class Trader:
             # Store midprice of a product
             self.cache_product(product, state, cache, time_cache)
         
-        else:
-            cache_num = self.signal_cache_num[product]
+        # else:
+        #     cache_num = self.signal_cache_num[product]
 
-            if (len(self.observations_cache[product]) == cache_num): 
-                self.observations_cache[product].pop(0)
+        #     if (len(self.observations_cache[product]) == cache_num): 
+        #         self.observations_cache[product].pop(0)
 
-            self.cache_signal(product, state)
+        #     self.cache_signal(product, state)
+
+    def handle_cache_sunlight(self, state: TradingState):
+        sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
+        current_sum = self.sunlight_cache.get(state.timestamp//83300,0)
+        self.sunlight_cache[state.timestamp//83300] = current_sum + sunlight
 
     # Calculates regression when given the times and prices, and a timestamp to predict the price of
     def calculate_regression(self, times: list[int], prices: list[int], timestamp: int):
@@ -442,10 +441,77 @@ class Trader:
 
         return orders
 
+    def get_humidity_change(self, observations: Observation):
+            humidity = observations.conversionObservations['ORCHIDS'].humidity
+            
+            percentage_change = 0
+
+            # return 'no change' if humidity is in optimal range
+            if (60.0 < humidity and humidity < 80.0):
+                return percentage_change
+            
+            elif (humidity < 60.0):
+                steps = (60.0 - humidity) // 5
+                return percentage_change - steps * 2
+
+            elif (80.0 < humidity):
+                steps = (humidity - 80) // 5
+                return percentage_change - steps * 2
+
+    def get_sunlight_change(self, state: TradingState):
+        current_hour = state.timestamp//83300
+
+        sum = 0
+        for hour in range(current_hour + 1):
+            sum += self.sunlight_cache[hour]
+        
+        percentage_change = -4
+
+        if sum < 833 * 7 * 2500: # 7 hrs of sunlight
+            return percentage_change
+        else:
+            return 0
+
+    # calculate orchid storage fees 
+    def get_current_storage_fee(self, incoming_side: str, volume: int):
+        storage_fee = 0.1
+        return self.current_positions['ORCHIDS'] * storage_fee
+
+    # Returns cost of orchid trade
+    def get_orchid_trade_cost(self, observations: Observation, side: str, volume: int):
+        cost = 0
+        if side == 'buy':
+            # add cost of orchids (add conversion logic)
+            ask_price = observations.conversionObservations['ORCHIDS'].askPrice
+            cost += ask_price * volume
+            # add tariff, transport and storage
+            cost += -observations.conversionObservations['ORCHIDS'].importTariff
+            cost += self.get_orchid_storage_cost('buy', volume) # is this right
+        else:
+            # add cost of orchids (add conversion logic)
+            bid_price = observations.conversionObservations['ORCHIDS'].bidPrice
+            cost += bid_price * volume
+            # add tariff, transport and storage
+            cost += observations.conversionObservations['ORCHIDS'].exportTariff
+            cost += self.get_orchid_storage_cost('sell', volume) # is this right
+
+        cost += observations.conversionObservations['ORCHIDS'].transportFees
+        return cost
+
     # We need some function that calculates orchid prices based on sunlight and humidity
-    def get_orchid_price(self, state):
+    def get_orchid_price(self, state: TradingState):
         # for now, return nothing
-        return
+
+        production_percent_change = self.get_humidity_change(state.observations) + self.get_sunlight_change(state)
+        sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
+        humidity = state.observations.conversionObservations['ORCHIDS'].humidity
+
+        c = 693.3200659
+        sunlight_coef = 0.040136744
+        humidity_coef = 3.779203831
+        regression_price = c + sunlight_coef*sunlight + humidity_coef*humidity
+        logger.print("Change ", production_percent_change)
+        return regression_price
 
     def computer_orchid_orders(self, state):
         product = "ORCHIDS"
@@ -459,21 +525,22 @@ class Trader:
         best_bid, best_bid_amount = market_buy_orders[0]
 
         # price based on mid price for now
-        # acceptable_price = (best_ask + best_bid) / 2# self.get_orchid_price()
-        acceptable_price = 1087
+        acceptable_price = self.get_orchid_price(state)
+        # acceptable_price = 1087
         logger.print(f"{product} acceptable price: {acceptable_price}")
 
         ordered = 0
 
-        if best_ask <= acceptable_price: # this is the wrong way around but we just want to see what is happening
+        if best_ask <= acceptable_price and (state.timestamp/100)%2: # this is the wrong way around but we just want to see what is happening
             orders.append(Order(product, best_ask, -best_ask_amount))
             ordered += -best_ask_amount
 
-        if best_bid >= acceptable_price: # this is the wrong way around but we just want to see what is happening
+        if best_bid >= acceptable_price and not (state.timestamp/100)%2: # this is the wrong way around but we just want to see what is happening
             orders.append(Order(product, best_bid, -best_bid_amount))
             ordered += -best_ask_amount
 
-        return orders, ordered
+
+        return orders, -self.current_positions['ORCHIDS']
 
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
@@ -496,8 +563,10 @@ class Trader:
         self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
         # self.handle_cache('ORCHIDS', state, self.orchid_cache, self.orchid_time_cache)
 
-        self.handle_cache('SUNLIGHT', state, [], [])
-        self.handle_cache('HUMIDITY', state, [], [])
+        # self.handle_cache('SUNLIGHT', state, [], [])
+        # self.handle_cache('HUMIDITY', state, [], [])
+        self.handle_cache_sunlight(state)
+        logger.print(self.sunlight_cache)
 
         # Get amethyst orders
         # amethyst_orders = self.compute_amethyst_orders(state)
@@ -512,6 +581,7 @@ class Trader:
 
         # logger.print(self.observations_cache)
 
-        result["ORCHIDS"], conversions = self.computer_orchid_orders(state) 
+        result["ORCHIDS"], conversions = self.computer_orchid_orders(state)
+
         logger.flush(state, result, conversions, trader_data)
         return result, conversions, trader_data
