@@ -93,11 +93,12 @@ logger = Logger()
 
 class Trader:
     
-    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20}
-    current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0}
+    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}
+    current_positions = {'STARFRUIT' : 0, 'AMETHYSTS' : 0, 'ORCHIDS': 0}
     
     # Stores cache nums for each product 
-    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20}
+    product_cache_num = {"STARFRUIT" : 20, 'AMETHYSTS' : 20, 'ORCHIDS' : 20}
+    # signal_cache_num = {"SUNLIGHT" : 100, "HUMIDITY" : 5}
 
     # This starfruit_cache stores the last 'starfruit_cache_num' of starfruit midprices
     starfruit_cache = []
@@ -106,7 +107,16 @@ class Trader:
     # Amethyst cache to store amethysts
     amethyst_cache = []
     amethyst_time_cache = []
-    
+
+    # orchid cache
+    orchid_cache = []
+    orchid_time_cache = []
+
+    observations_cache = {"IMPORT_TARIFF": [], "EXPORT_TARIFF": []}
+
+    # sunlight_cache = {0: 12312312, 1: 21312903129}
+    sunlight_cache = {}
+
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -121,7 +131,7 @@ class Trader:
         data = jsonpickle.decode(string)
         for attr_name, attr_value in data.items():
             setattr(Trader, attr_name, attr_value)
-                
+
     # Helper function to store the midprice of a product
     def cache_product(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
         # Get the order depths of product
@@ -137,15 +147,22 @@ class Trader:
 
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
     def handle_cache(self, product: Symbol, state: TradingState, cache: list[int], time_cache: list[int]):
-        cache_num = self.product_cache_num[product]
-        
-        # Remove prices from cache if there are too many
-        if (len(cache) == cache_num): 
-            cache.pop(0)
-            time_cache.pop(0)
-        
-        # Store midprice of a product
-        self.cache_product(product, state, cache, time_cache)
+
+        if (product == "STARFRUIT" or product == "AMETHYSTS" or product == "ORCHIDS"):
+            cache_num = self.product_cache_num[product]
+            
+            # Remove prices from cache if there are too many
+            if (len(cache) == cache_num): 
+                cache.pop(0)
+                time_cache.pop(0)
+            
+            # Store midprice of a product
+            self.cache_product(product, state, cache, time_cache)
+
+    def handle_cache_sunlight(self, state: TradingState):
+        sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
+        current_sum = self.sunlight_cache.get(state.timestamp//83300,0)
+        self.sunlight_cache[state.timestamp//83300] = current_sum + sunlight
 
     # Calculates regression when given the times and prices, and a timestamp to predict the price of
     def calculate_regression(self, times: list[int], prices: list[int], timestamp: int):
@@ -185,14 +202,14 @@ class Trader:
             acceptable_price = sum(cache)/len(cache)
 
         return acceptable_price
-      
+
     def get_spread(self, cache):
         y = 0.1
         k = 1.5
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-    
+
     def adjust_positions(self, orders: List[Order], product: str):
         #logger.print(f"old orders: {orders}")
         limit = self.POSITION_LIMIT[product]
@@ -337,7 +354,7 @@ class Trader:
             orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # SELL should be negative for market making -- int(price + spread)
 
         return orders
-    
+
     def compute_starfruit_orders(self, state):
         product = "STARFRUIT"
         order_depth: OrderDepth = state.order_depths[product]
@@ -409,7 +426,116 @@ class Trader:
             orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
 
         return orders
-        
+
+    def get_humidity_change(self, observations: Observation):
+            humidity = observations.conversionObservations['ORCHIDS'].humidity
+            
+            percentage_change = 0
+
+            # return 'no change' if humidity is in optimal range
+            if (60.0 < humidity and humidity < 80.0):
+                return percentage_change
+            
+            elif (humidity < 60.0):
+                steps = (60.0 - humidity) / 5
+                return percentage_change - steps * 2
+
+            elif (80.0 < humidity):
+                steps = (humidity - 80) / 5
+                return percentage_change - steps * 2
+
+    def get_sunlight_change(self, state: TradingState):
+        current_hour = state.timestamp//83300
+
+        sum = 0
+        for hour in range(current_hour + 1):
+            sum += self.sunlight_cache[hour]
+
+        percentage_change = -4
+
+        if sum < 833 * 7 * 2500: # 7 hrs of sunlight
+            return percentage_change
+        else:
+            return 0
+
+    # calculate orchid storage fees 
+    def get_current_storage_fee(self):
+        storage_fee = 0.1
+        return self.current_positions['ORCHIDS'] * storage_fee
+
+    # Returns cost of orchid trade
+    def get_orchid_conversion_cost(self, observations: Observation, conversions: int):
+        cost = 0
+        if conversions > 0:
+            # add cost of orchids (add conversion logic)
+            ask_price = observations.conversionObservations['ORCHIDS'].askPrice
+            cost += ask_price
+            # add tariff, transport and storage
+            cost += observations.conversionObservations['ORCHIDS'].importTariff
+            # cost += self.get_orchid_storage_cost('buy', conversions) # is this right
+        elif conversions < 0:
+            # add cost of orchids (add conversion logic)
+            bid_price = observations.conversionObservations['ORCHIDS'].bidPrice
+            cost += bid_price
+            # add tariff, transport and storage
+            cost += observations.conversionObservations['ORCHIDS'].exportTariff
+            # cost += self.get_orchid_storage_cost('sell', -conversions) # is this right
+
+        cost *= conversions
+        cost += observations.conversionObservations['ORCHIDS'].transportFees
+        return cost
+
+    # We need some function that calculates orchid prices based on sunlight and humidity
+    def get_orchid_price(self, state: TradingState):
+        # production_percent_change = self.get_humidity_change(state.observations) + self.get_sunlight_change(state)
+        # logger.print("Change ", production_percent_change)
+
+        sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
+        humidity = state.observations.conversionObservations['ORCHIDS'].humidity
+
+        c = 693.3200659
+        sunlight_coef = 0.040136744
+        humidity_coef = 3.779203831
+        regression_price = c + sunlight_coef*sunlight + humidity_coef*humidity
+
+        return regression_price
+
+    def computer_orchid_orders(self, state: TradingState):
+        product = "ORCHIDS"
+        order_depth: OrderDepth = state.order_depths[product]
+        orders: List[Order] = []
+
+        market_sell_orders = list(order_depth.sell_orders.items())
+        market_buy_orders = list(order_depth.buy_orders.items())
+
+        best_ask, best_ask_amount = market_sell_orders[0]
+        best_bid, best_bid_amount = market_buy_orders[0]
+
+        conversions = 0
+
+        bid_amount = 100
+
+        ask_amount = 100
+
+        price = (best_ask + best_bid)/2
+
+        # buying
+        spread = 3
+        avgExport = sum(self.observations_cache["EXPORT_TARIFF"])/len(self.observations_cache["EXPORT_TARIFF"])
+        offer_price = state.observations.conversionObservations['ORCHIDS'].bidPrice - avgExport - spread
+        orders.append(Order(product, int(offer_price), bid_amount))
+
+        # selling
+        spread = 2 # spread of 2 is 78k, spread 1 = 28k, spread 3 = 76k
+        avgImport = sum(self.observations_cache["IMPORT_TARIFF"])/len(self.observations_cache["IMPORT_TARIFF"])
+        logger.print(f"import {avgImport}")
+        offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + avgImport + spread # state.observations.conversionObservations['ORCHIDS'].importTariff
+        orders.append(Order(product, math.ceil(offer_price), -ask_amount))
+
+        conversions = -self.current_positions[product]
+
+        return orders, conversions
+
 
     # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
@@ -430,6 +556,19 @@ class Trader:
         self.handle_cache('STARFRUIT', state, self.starfruit_cache, self.starfruit_time_cache)
         self.handle_cache('AMETHYSTS', state, self.amethyst_cache, self.amethyst_time_cache)
 
+        if (len(self.observations_cache["IMPORT_TARIFF"]) == 20): 
+                self.observations_cache["IMPORT_TARIFF"].pop(0)
+
+        observation = state.observations.conversionObservations['ORCHIDS']
+
+        self.observations_cache["IMPORT_TARIFF"].append(observation.importTariff)
+
+        if (len(self.observations_cache["EXPORT_TARIFF"]) == 20): 
+                self.observations_cache["EXPORT_TARIFF"].pop(0)
+
+        self.observations_cache["EXPORT_TARIFF"].append(observation.exportTariff)
+        
+
         # Get amethyst orders
         amethyst_orders = self.compute_amethyst_orders(state)
         result["AMETHYSTS"] = amethyst_orders
@@ -438,9 +577,11 @@ class Trader:
         starfruit_orders = self.compute_starfruit_orders(state)
         result["STARFRUIT"] = self.adjust_positions(starfruit_orders, "STARFRUIT")
 
+        result["ORCHIDS"], conversions = self.computer_orchid_orders(state)
+
         # serialise data
         trader_data = self.serialize_to_string()
 
-        conversions = 0
         logger.flush(state, result, conversions, trader_data)
+
         return result, conversions, trader_data
