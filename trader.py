@@ -413,8 +413,8 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_cache('STARFRUIT', state, self.starfruit_cache) # Handle cache for starfruit
-        self.handle_tariff_cache(state) # Handle cache tariff
+        self.handle_cache('STARFRUIT', state, self.starfruit_cache)
+        self.handle_tariff_cache(state)
 
         amethyst_orders = self.compute_amethyst_orders(state)
         result["AMETHYSTS"] = amethyst_orders
