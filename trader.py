@@ -422,7 +422,6 @@ class Trader:
         starfruit_orders = self.compute_starfruit_orders(state)
         result["STARFRUIT"] = starfruit_orders
 
-        # conversions = 0
         result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
         # serialise data
