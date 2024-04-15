@@ -413,7 +413,10 @@ class Trader:
     def compute_basket_orders(self, state: TradingState):
         products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
         orders = {"CHOCOLATE": [], "STRAWBERRIES": [], "ROSES": [], "GIFT_BASKET": []}
+        number_in_basket = {"CHOCOLATE": 4, "STRAWBERRIES": 6, "ROSES": 1}
 
+        spreads = {"CHOCOLATE": 1, "STRAWBERRIES": 1, "ROSES": 1}
+        undercuts = {"CHOCOLATE": 1, "STRAWBERRIES": 1, "ROSES": 2}
         expected_basket_price = 0
 
         for product in products:
@@ -437,24 +440,19 @@ class Trader:
 
             if product != "GIFT_BASKET":
                 # Market take/make for choc, strawberr, roses here:
-                spread = 2 # this is a random number
+                spread = spreads[product] # this is a random number
                 price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
-                undercut = 1
+                undercut = undercuts[product]
 
                 # Send a buy order (bots will sell to us at this price and we are looking to buy)
-                orders[product].append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
+                # orders[product].append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
+                orders[product].append(Order(product, best_bid + undercut, bid_amount)) 
 
                 # Send a sell order (bots will buy from us at this price and we are looking to sell)
-                orders[product].append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+                # orders[product].append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+                orders[product].append(Order(product, best_ask - undercut, -ask_amount)) 
 
-                if product == "CHOCOLATE":
-                    number = 4
-                elif product == "STRAWBERRIES":
-                    number = 6
-                elif product == "ROSES":
-                    number = 1
-
-                expected_basket_price += number * mid_price
+                expected_basket_price += number_in_basket[product] * mid_price
 
             else: # For GIFT_BASKETS:
                 # Market make
@@ -462,7 +460,7 @@ class Trader:
                 logger.print(f"Expected {product} price = {expected_basket_price}\nReal {product} price = {mid_price}")
 
                 spread = 2 # this is a random number
-                diff = 380
+                diff = 382
                 price = expected_basket_price + diff
                 undercut = 1
 
@@ -483,21 +481,21 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_cache('STARFRUIT', state, self.starfruit_cache)
-        self.handle_tariff_cache(state)
+        # self.handle_cache('STARFRUIT', state, self.starfruit_cache)
+        # self.handle_tariff_cache(state)
 
-        amethyst_orders = self.compute_amethyst_orders(state)
-        result["AMETHYSTS"] = amethyst_orders
+        # amethyst_orders = self.compute_amethyst_orders(state)
+        # result["AMETHYSTS"] = amethyst_orders
 
-        starfruit_orders = self.compute_starfruit_orders(state)
-        result["STARFRUIT"] = starfruit_orders
+        # starfruit_orders = self.compute_starfruit_orders(state)
+        # result["STARFRUIT"] = starfruit_orders
 
-        result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
+        # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
         result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state)
-
+        
         # serialise data
         trader_data = self.serialize_to_string()
 
-        logger.flush(state, result, conversions, trader_data)
-        return result, conversions, trader_data
+        logger.flush(state, result, 0, trader_data)
+        return result, 0, trader_data
