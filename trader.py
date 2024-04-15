@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import math
 
-# Logger class is so that https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer can be used
 class Logger:
     def __init__(self) -> None:
         self.logs = ""
@@ -189,8 +188,8 @@ class Trader:
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-
-    # Returns weighted mid price 
+    
+    # Returns weighted midprice from order book
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
                    [price*volume for price, volume in market_buy_orders])/sum([-volume for _, volume in market_sell_orders] +
@@ -395,7 +394,7 @@ class Trader:
         orders.append(Order(product, int(offer_price), bid_amount))
 
         # selling
-        spread = 2 # spread of 2 is 78k, spread 1 = 28k, spread 3 = 76k
+        spread = 2 # used 2.5 in round 2 -> This should be calculated based on something BUG OPTIMISE
         avgImport = sum(self.observations_cache["IMPORT_TARIFF"])/len(self.observations_cache["IMPORT_TARIFF"])
         logger.print(f"import {avgImport}")
         offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + avgImport + spread 
@@ -405,7 +404,6 @@ class Trader:
 
         return orders, conversions
 
-    # This method is called at every timestamp -> it handles all the buy and sell orders, and outputs a list of orders to be sent
     def run(self, state: TradingState):
         # update cache only if information is lost
         if state.traderData != "" and self.starfruit_cache == []:
