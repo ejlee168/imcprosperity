@@ -92,7 +92,7 @@ logger = Logger()
 
 class Trader:
 
-    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}    
+    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}
 
     # Stores how many values to cache for each product 
     product_cache_num = {"STARFRUIT" : 20}
