@@ -92,7 +92,13 @@ logger = Logger()
 
 class Trader:
 
-    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}
+    POSITION_LIMIT = {'STARFRUIT' : 20, 
+                      'AMETHYSTS' : 20, 
+                      'ORCHIDS': 100, 
+                      'CHOCOLATE': 250, 
+                      'STRAWBERRIES': 350, 
+                      'ROSES': 60, 
+                      "GIFT_BASKET": 60}
 
     # Stores how many values to cache for each product 
     product_cache_num = {"STARFRUIT" : 20}
@@ -112,7 +118,7 @@ class Trader:
         serialised_data = jsonpickle.encode(data)
         #logger.print(serialised_data)
         return serialised_data
-    
+
     def deserialize_data(self, string: str):
         data = jsonpickle.decode(string)
         for attr_name, attr_value in data.items():
@@ -134,7 +140,7 @@ class Trader:
 
         # Add the product midprice and timestamp to relevant cache
         cache.append((best_ask + best_bid)/2)
-    
+
     def handle_tariff_cache(self, state: TradingState):
         if (len(self.observations_cache["IMPORT_TARIFF"]) == 20): 
                 self.observations_cache["IMPORT_TARIFF"].pop(0)
@@ -188,7 +194,7 @@ class Trader:
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-    
+
     # Returns weighted midprice from order book
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
@@ -404,6 +410,70 @@ class Trader:
 
         return orders, conversions
 
+    def compute_basket_orders(self, state: TradingState):
+        products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
+        orders = {"CHOCOLATE": [], "STRAWBERRIES": [], "ROSES": [], "GIFT_BASKET": []}
+
+        expected_basket_price = 0
+
+        for product in products:
+
+            order_depth: OrderDepth = state.order_depths[product]
+
+            market_sell_orders = list(order_depth.sell_orders.items())
+            market_buy_orders = list(order_depth.buy_orders.items())
+
+            best_ask, best_ask_amount = market_sell_orders[0]
+            best_bid, best_bid_amount = market_buy_orders[0]
+            mid_price = (best_ask + best_bid)/2
+            
+            bid_amount = ask_amount = self.POSITION_LIMIT[product]//2
+
+            if (state.position.get(product, 0) > bid_amount):
+                bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+
+            if (state.position.get(product, 0) < -ask_amount):
+                ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+
+            if product != "GIFT_BASKET":
+                # Market take/make for choc, strawberr, roses here:
+                spread = 2 # this is a random number
+                price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
+                undercut = 1
+
+                # Send a buy order (bots will sell to us at this price and we are looking to buy)
+                orders[product].append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
+
+                # Send a sell order (bots will buy from us at this price and we are looking to sell)
+                orders[product].append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+
+                if product == "CHOCOLATE":
+                    number = 4
+                elif product == "STRAWBERRIES":
+                    number = 6
+                elif product == "ROSES":
+                    number = 1
+
+                expected_basket_price += number * mid_price
+
+            else: # For GIFT_BASKETS:
+                # Market make
+                # gift basket = 6 straw, 4 chocs, 1 rose
+                logger.print(f"Expected {product} price = {expected_basket_price}\nReal {product} price = {mid_price}")
+
+                spread = 2 # this is a random number
+                diff = 380
+                price = expected_basket_price + diff
+                undercut = 1
+
+                # Send a buy order (bots will sell to us at this price and we are looking to buy)
+                orders[product].append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
+
+                # Send a sell order (bots will buy from us at this price and we are looking to sell)
+                orders[product].append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+
+        return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
+
     def run(self, state: TradingState):
         # update cache only if information is lost
         if state.traderData != "" and self.starfruit_cache == []:
@@ -423,6 +493,8 @@ class Trader:
         result["STARFRUIT"] = starfruit_orders
 
         result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
+
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state)
 
         # serialise data
         trader_data = self.serialize_to_string()
