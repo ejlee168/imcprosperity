@@ -100,9 +100,6 @@ class Trader:
     # Stores last starfruit midprices - used for regression
     starfruit_cache = []
 
-    # Stores tariff prices - used for orchid market making
-    observations_cache = {"IMPORT_TARIFF": [], "EXPORT_TARIFF": []}
-
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -134,18 +131,6 @@ class Trader:
 
         # Add the product midprice and timestamp to relevant cache
         cache.append((best_ask + best_bid)/2)
-    
-    def handle_tariff_cache(self, state: TradingState):
-        if (len(self.observations_cache["IMPORT_TARIFF"]) == 20): 
-                self.observations_cache["IMPORT_TARIFF"].pop(0)
-
-        if (len(self.observations_cache["EXPORT_TARIFF"]) == 20): 
-                self.observations_cache["EXPORT_TARIFF"].pop(0)
-
-        observation = state.observations.conversionObservations['ORCHIDS']
-
-        self.observations_cache["IMPORT_TARIFF"].append(observation.importTariff)
-        self.observations_cache["EXPORT_TARIFF"].append(observation.exportTariff)
 
     # Calculates regression when given the times and prices, and a timestamp to predict the price of
     def calculate_regression(self, prices: list[int], timestamp: int):
@@ -339,65 +324,23 @@ class Trader:
 
         return orders
 
-    # Returns cost of orchid conversion
-    def get_orchid_conversion_cost(self, observations: Observation, conversions: int):
-        cost = 0
-        if conversions > 0:
-            # add cost of orchids (add conversion logic)
-            ask_price = observations.conversionObservations['ORCHIDS'].askPrice
-            cost += ask_price
-            # add tariff, transport and storage
-            cost += observations.conversionObservations['ORCHIDS'].importTariff
-            # cost += self.get_orchid_storage_cost('buy', conversions) # is this right
-        elif conversions < 0:
-            # add cost of orchids (add conversion logic)
-            bid_price = observations.conversionObservations['ORCHIDS'].bidPrice
-            cost += bid_price
-            # add tariff, transport and storage
-            cost += observations.conversionObservations['ORCHIDS'].exportTariff
-            # cost += self.get_orchid_storage_cost('sell', -conversions) # is this right
-
-        cost *= conversions
-        cost += observations.conversionObservations['ORCHIDS'].transportFees
-        return cost
-
-    def get_orchid_price(self, state: TradingState):
-        # production_percent_change = self.get_humidity_change(state.observations) + self.get_sunlight_change(state)
-        # logger.print("Change ", production_percent_change)
-
-        sunlight = state.observations.conversionObservations['ORCHIDS'].sunlight
-        humidity = state.observations.conversionObservations['ORCHIDS'].humidity
-
-        c = 693.3200659
-        sunlight_coef = 0.040136744
-        humidity_coef = 3.779203831
-        regression_price = c + sunlight_coef*sunlight + humidity_coef*humidity
-
-        return regression_price
-
     def compute_orchid_orders(self, state: TradingState):
         product = "ORCHIDS"
         orders: List[Order] = []
 
-        # order_depth: OrderDepth = state.order_depths[product]
-        # market_sell_orders = list(order_depth.sell_orders.items())
-        # market_buy_orders = list(order_depth.buy_orders.items())
-
         conversions = 0
         bid_amount = 100
         ask_amount = 100
+        observation = state.observations.conversionObservations['ORCHIDS']
 
         # buying
         spread = 3
-        avgExport = sum(self.observations_cache["EXPORT_TARIFF"])/len(self.observations_cache["EXPORT_TARIFF"])
-        offer_price = state.observations.conversionObservations['ORCHIDS'].bidPrice - avgExport - spread
+        offer_price = state.observations.conversionObservations['ORCHIDS'].bidPrice - observation.exportTariff - spread
         orders.append(Order(product, int(offer_price), bid_amount))
 
         # selling
         spread = 2 # used 2.5 in round 2 -> This should be calculated based on something BUG OPTIMISE
-        avgImport = sum(self.observations_cache["IMPORT_TARIFF"])/len(self.observations_cache["IMPORT_TARIFF"])
-        logger.print(f"import {avgImport}")
-        offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + avgImport + spread 
+        offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + observation.importTariff + spread 
         orders.append(Order(product, math.ceil(offer_price), -ask_amount))
 
         conversions = -state.position.get(product, 0)
@@ -414,7 +357,6 @@ class Trader:
         result = {}
 
         self.handle_cache('STARFRUIT', state, self.starfruit_cache)
-        self.handle_tariff_cache(state)
 
         amethyst_orders = self.compute_amethyst_orders(state)
         result["AMETHYSTS"] = amethyst_orders
