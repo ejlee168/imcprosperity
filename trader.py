@@ -440,7 +440,7 @@ class Trader:
         K = 10000  # Strike price
         T = 246/252  # Time to expiration (in years)
         r = 0.033 # Risk-free interest rate
-        sigma = 0.18# 0.11737 # Volatility
+        sigma = 0.119156162 # Volatility
 
         d1 = (np.log(S / K) + (r + sigma**2 / 2) * T) / (sigma * np.sqrt(T))
         d2 = d1 - sigma * np.sqrt(T)
@@ -496,22 +496,21 @@ class Trader:
             best_ask, best_ask_amount = market_sell_orders[0]
             best_bid, best_bid_amount = market_buy_orders[0]
 
-        b_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
-        a_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
-
         # buying
         if len(order_depth.sell_orders) != 0:
-            if best_ask <= c_price: # take
-                orders.append(Order(product, best_ask, b_amount))
-                logger.print(product, " BUY", str(b_amount) + "x", best_ask)
+            amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+            if best_ask <= p_price: # take
+                orders.append(Order(product, best_ask, amount))
+                logger.print(product, " BUY", str(amount) + "x", best_ask)
             # else: # market make
             #     orders.append(Order(product, round(p_price), self.POSITION_LIMIT[product] - state.position.get(product, 0)))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
+            amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
             if best_bid >= c_price: # take
-                orders.append(Order(product, best_bid, a_amount))
-                logger.print(product, " SELL", str(-a_amount) + "x", best_bid)
+                orders.append(Order(product, best_bid, amount))
+                logger.print(product, " SELL", str(-amount) + "x", best_bid)
             # else: # market make
             #     orders.append(Order(product,  round(c_price), -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
 
@@ -536,8 +535,6 @@ class Trader:
         # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
         # result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
-
-        # result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coc_orders(state)
 
         result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         # serialise data
