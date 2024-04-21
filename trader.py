@@ -92,7 +92,13 @@ logger = Logger()
 
 class Trader:
 
-    POSITION_LIMIT = {'STARFRUIT' : 20, 'AMETHYSTS' : 20, 'ORCHIDS': 100}
+    POSITION_LIMIT = {'STARFRUIT' : 20, 
+                      'AMETHYSTS' : 20, 
+                      'ORCHIDS': 100, 
+                      'CHOCOLATE': 250, 
+                      'STRAWBERRIES': 350, 
+                      'ROSES': 60, 
+                      "GIFT_BASKET": 60}
 
     # Stores how many values to cache for each product 
     product_cache_num = {"STARFRUIT" : 20}
@@ -109,7 +115,7 @@ class Trader:
         serialised_data = jsonpickle.encode(data)
         #logger.print(serialised_data)
         return serialised_data
-    
+
     def deserialize_data(self, string: str):
         data = jsonpickle.decode(string)
         for attr_name, attr_value in data.items():
@@ -173,7 +179,7 @@ class Trader:
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-    
+
     # Returns weighted midprice from order book
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
@@ -275,29 +281,32 @@ class Trader:
         logger.print(f"{product} best ask: {best_ask}")
         logger.print(f"{product} best bid: {best_bid}")
 
+        ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+
         # Do the BUYING 
         if len(order_depth.sell_orders) != 0:
             # Buy based on average price
             if best_ask <= acceptable_price_avg: 
                 logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
-                orders.append(Order(product, best_ask, -best_ask_amount))
+                orders.append(Order(product, best_ask, ask_amount))
 
              # Buy based on regression price
             elif best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
                 logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
-                orders.append(Order(product, best_ask, -best_ask_amount))
+                orders.append(Order(product, best_ask, ask_amount))
 
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
             # Sell based on average price
-            if best_bid >= acceptable_price_avg:    
+            if best_bid >= acceptable_price_avg:
                 logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
-                orders.append(Order(product, best_bid, -best_bid_amount))
+                orders.append(Order(product, best_bid, bid_amount))
 
             # Sell based on regression price
             elif best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
                 logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
-                orders.append(Order(product, best_bid, -best_bid_amount))
+                orders.append(Order(product, best_bid, bid_amount))
 
         # MArket MAKING
         bid_amount = 10
@@ -314,11 +323,11 @@ class Trader:
         price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
         undercut = 1
 
-        if not (best_ask <= acceptable_price_avg) or not (best_ask <= acceptable_price_regres):
+        if not (best_ask <= acceptable_price_avg or best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
             # Send a buy order (bots will sell to us at this price and we are looking to buy)
             orders.append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
 
-        if not (best_bid >= acceptable_price_avg) or not (best_bid >= acceptable_price_regres):
+        if not (best_bid >= acceptable_price_avg or best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
             # Send a sell order (bots will buy from us at this price and we are looking to sell)
             orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
 
@@ -339,7 +348,7 @@ class Trader:
         orders.append(Order(product, int(offer_price), bid_amount))
 
         # selling
-        spread = 2 # used 2.5 in round 2 -> This should be calculated based on something BUG OPTIMISE
+        spread = 2 #min(abs(observation.importTariff) + 1, 2) # used 2.5 in round 2 -> This should be calculated based on something BUG OPTIMISE
         offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + observation.importTariff + spread 
         orders.append(Order(product, math.ceil(offer_price), -ask_amount))
 
@@ -347,10 +356,114 @@ class Trader:
 
         return orders, conversions
 
+    def cache_premium(self, state: TradingState):
+
+        if len(self.premium_cache) == 20:
+            self.premium_cache.pop(0)
+
+        products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
+        number_in_basket = {"CHOCOLATE": 4, "STRAWBERRIES": 6, "ROSES": 1}
+        expected_basket_mid_price = 0
+        for product in products:
+
+            order_depth: OrderDepth = state.order_depths[product]
+
+            market_sell_orders = list(order_depth.sell_orders.items())
+            market_buy_orders = list(order_depth.buy_orders.items())
+
+            best_ask, _ = market_sell_orders[0]
+            best_bid, _ = market_buy_orders[0]
+
+            mid_price = (best_ask + best_bid)/2
+
+            if product != "GIFT_BASKET":
+                expected_basket_mid_price += number_in_basket[product] * mid_price
+
+            if product == "GIFT_BASKET":
+                self.premium_cache.append(mid_price - expected_basket_mid_price)
+
+    def compute_basket_orders(self, state: TradingState):
+        products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
+        orders = {"CHOCOLATE": [], "STRAWBERRIES": [], "ROSES": [], "GIFT_BASKET": []}
+        sell_orders = {}
+        buy_orders = {}
+
+        # gift basket = 6 straw, 4 chocs, 1 rose
+        number_in_basket = {"CHOCOLATE": 4, "STRAWBERRIES": 6, "ROSES": 1}
+        expected_basket_mid_price = 0
+
+        for product in products:
+
+            order_depth: OrderDepth = state.order_depths[product]
+
+            market_sell_orders = list(order_depth.sell_orders.items())
+            market_buy_orders = list(order_depth.buy_orders.items())
+
+            sell_orders[product] = market_sell_orders
+            buy_orders[product] = market_buy_orders
+
+            best_ask, best_ask_amount = market_sell_orders[0]
+            best_bid, best_bid_amount = market_buy_orders[0]
+
+            mid_price = (best_ask + best_bid)/2
+
+            if product != "GIFT_BASKET":
+                expected_basket_mid_price += number_in_basket[product] * mid_price
+
+            else: # For GIFT_BASKETS:
+                  # Market take
+                logger.print(f"Expected {product} price = {expected_basket_mid_price}\nReal {product} price = {mid_price}\nBest ask: {best_ask}\nBest bid: {best_bid}")
+
+                expected_premium = 380
+                difference = mid_price - expected_basket_mid_price
+                spread = 35
+
+                logger.print(f"expec prem {expected_premium}")
+                logger.print(f"expec basket price {expected_basket_mid_price}")
+                logger.print("spread is", spread)
+                logger.print(f"variance is {np.var(self.premium_cache)}")
+
+                ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+                bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+
+                # Send a buy order (bots will sell to us at this price and we are looking to buy)
+                if difference < expected_premium - spread: # best results with 40 and 380 as premium spread
+                    logger.print(f"market buy {best_ask}")
+                    orders[product].append(Order(product, best_ask, ask_amount))
+                else:
+                    orders[product].append(Order(product, int(expected_basket_mid_price + expected_premium - 20), self.POSITION_LIMIT[product] - state.position.get(product, 0)))
+
+                # Send a sell order (bots will buy from us at this price and we are looking to sell)
+                if difference > expected_premium + spread:
+                    logger.print(f"market sell {best_bid}")
+                    orders[product].append(Order(product, best_bid, bid_amount))
+                else:
+                    orders[product].append(Order(product, math.ceil(expected_basket_mid_price + expected_premium + 20), -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
+
+                # for item in products:
+                #     best_bid, best_bid_amount = buy_orders[item][0]
+                #     best_ask, best_ask_amount = sell_orders[item][0]
+                #     ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[item] - state.position.get(item, 0))
+                #     bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[item] - state.position.get(item, 0))
+
+                #     prod_mid = (best_ask + best_bid)/2
+
+                #     if item == "CHOCOLATE":
+                #         if prod_mid > mid_price - 62728.5435 + 1000: # and not (difference < expected_premium - spread):
+                #             orders[item].append(Order(item, best_ask, ask_amount)) # buy
+                #         if prod_mid < mid_price - 62728.5435 - 500: # and not (difference > expected_premium + spread):
+                #             orders[item].append(Order(item, best_bid, bid_amount)) # sell
+                #     if item == "ROSES":
+                #         if prod_mid > mid_price - 55487: #56201.90 + 900: # and not (difference < expected_premium - spread):
+                #             orders[item].append(Order(item, best_ask, -best_ask_amount)) # buy
+                #         if prod_mid < mid_price - 56494: #56201.90 - 450: # and not (difference > expected_premium + spread):
+                #             orders[item].append(Order(item, best_bid, -best_bid_amount)) # sell
+
+        return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
+
     def run(self, state: TradingState):
         # update cache only if information is lost
         if state.traderData != "" and self.starfruit_cache == []:
-            #logger.print("trader: ", state.traderData)
             self.deserialize_data(state.traderData)
         
         # Dictionary that will end up storing all the orders of each product
@@ -366,8 +479,10 @@ class Trader:
 
         result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
+
         # serialise data
         trader_data = self.serialize_to_string()
 
-        logger.flush(state, result, conversions, trader_data)
+        logger.flush(state, result, 0, trader_data)
         return result, conversions, trader_data

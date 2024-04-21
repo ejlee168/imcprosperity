@@ -15,6 +15,10 @@ Rough rough rough start. We struggled to find out how sunlight and humidity coul
 # Results after round 2: 591k pnl, 166th global and 9th in AUS
 
 ## 15th April - Round 3:
+team too busy sadge only ethan worked on it. 
+
+# Results afte round 3: 708k pnl, 176th global and 9th in Aus
+
 
 
 
