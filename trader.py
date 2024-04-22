@@ -108,9 +108,6 @@ class Trader:
     # Stores last starfruit midprices - used for regression
     starfruit_cache = []
 
-    coconut_diffs = []
-    coconut_last_price = 0
-
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -434,32 +431,6 @@ class Trader:
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
 
-    def cache_coconut_diff(self, cache: list[int], state: TradingState):
-        # Remove prices from cache if there are too many
-        if (len(cache) == 5): 
-            cache.pop(0)
-        
-        product = "COCONUT"
-        order_depth: OrderDepth = state.order_depths[product]
-        market_sell_orders = list(order_depth.sell_orders.items())
-        market_buy_orders = list(order_depth.buy_orders.items())
-
-        mid_price = 10000
-        if len(order_depth.buy_orders) != 0 and len(order_depth.sell_orders) != 0:
-            market_buy_orders = list(order_depth.buy_orders.items())
-            market_sell_orders = list(order_depth.sell_orders.items())
-            best_bid, _ = market_buy_orders[0]
-            best_ask, _ = market_sell_orders[0]
-            mid_price = (best_ask + best_bid)/2
-
-        
-        if (len(cache) == 0):
-            cache.append(0)
-            self.coconut_last_price = 10000
-        else:
-            cache.append(mid_price - self.coconut_last_price)
-            self.coconut_last_price = mid_price
-
     def norm_cdf(self, x):
         return 0.5 * (1 + math.erf(x / np.sqrt(2)))
 
@@ -522,7 +493,7 @@ class Trader:
             coc_best_ask, best_ask_amount = sell_orders[product][0]
             coc_best_bid, best_bid_amount = buy_orders[product][0]
 
-            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//2 - state.position.get(product, 0))
             coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         product = "COCONUT_COUPON"
@@ -539,9 +510,9 @@ class Trader:
                 logger.print(product, " BUY", str(amount) + "x", best_ask)
                 
                 # sell hedge coconuts
-                if state.position.get(product, 0) < 0:
+                if state.position.get(product, 0) > 100:
                     orders["COCONUT"].append(Order("COCONUT", coc_best_bid, coc_bid_amount))
-                
+
             else: # market make
                 orders[product].append(Order(product, round(c_price) - spread, abs(self.POSITION_LIMIT[product] - state.position.get(product, 0))))
 
@@ -553,7 +524,7 @@ class Trader:
                 logger.print(product, " SELL", str(-amount) + "x", best_bid)
 
                 # take buy hedge coconuts
-                if state.position.get(product, 0) > 0:
+                if state.position.get(product, 0) < -100:
                     orders["COCONUT"].append(Order("COCONUT", coc_best_ask, coc_ask_amount))
 
             else: # market make
@@ -569,25 +540,23 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        # self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
+        self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
-        # amethyst_orders = self.compute_amethyst_orders(state)
-        # result["AMETHYSTS"] = amethyst_orders
+        amethyst_orders = self.compute_amethyst_orders(state)
+        result["AMETHYSTS"] = amethyst_orders
 
-        # starfruit_orders = self.compute_starfruit_orders(state)
-        # result["STARFRUIT"] = starfruit_orders
+        starfruit_orders = self.compute_starfruit_orders(state)
+        result["STARFRUIT"] = starfruit_orders
 
-        # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
+        result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
-        # result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
-        
-        # self.cache_coconut_diff(self.coconut_diffs, state)
-        logger.print(self.coconut_diffs)
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
+
         result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
+        
         # serialise data
         trader_data = self.serialize_to_string()
 
-        conversions = 0
         logger.flush(state, result, 0, trader_data)
         return result, conversions, trader_data
     
