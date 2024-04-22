@@ -98,7 +98,9 @@ class Trader:
                       'CHOCOLATE': 250, 
                       'STRAWBERRIES': 350, 
                       'ROSES': 60, 
-                      "GIFT_BASKET": 60}
+                      "GIFT_BASKET": 60,
+                      "COCONUT": 300,
+                      "COCONUT_COUPON": 600}
 
     # Stores how many values to cache for each product 
     product_cache_num = {"STARFRUIT" : 20}
@@ -122,7 +124,7 @@ class Trader:
             setattr(Trader, attr_name, attr_value)
 
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
-    def handle_cache(self, product: Symbol, state: TradingState, cache: list[int]):
+    def handle_starfruit_cache(self, product: Symbol, state: TradingState, cache: list[int]):
         cache_num = self.product_cache_num[product]
         
         # Remove prices from cache if there are too many
@@ -179,7 +181,7 @@ class Trader:
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-
+    
     # Returns weighted midprice from order book
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
@@ -356,32 +358,6 @@ class Trader:
 
         return orders, conversions
 
-    def cache_premium(self, state: TradingState):
-
-        if len(self.premium_cache) == 20:
-            self.premium_cache.pop(0)
-
-        products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
-        number_in_basket = {"CHOCOLATE": 4, "STRAWBERRIES": 6, "ROSES": 1}
-        expected_basket_mid_price = 0
-        for product in products:
-
-            order_depth: OrderDepth = state.order_depths[product]
-
-            market_sell_orders = list(order_depth.sell_orders.items())
-            market_buy_orders = list(order_depth.buy_orders.items())
-
-            best_ask, _ = market_sell_orders[0]
-            best_bid, _ = market_buy_orders[0]
-
-            mid_price = (best_ask + best_bid)/2
-
-            if product != "GIFT_BASKET":
-                expected_basket_mid_price += number_in_basket[product] * mid_price
-
-            if product == "GIFT_BASKET":
-                self.premium_cache.append(mid_price - expected_basket_mid_price)
-
     def compute_basket_orders(self, state: TradingState):
         products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
         orders = {"CHOCOLATE": [], "STRAWBERRIES": [], "ROSES": [], "GIFT_BASKET": []}
@@ -421,7 +397,6 @@ class Trader:
                 logger.print(f"expec prem {expected_premium}")
                 logger.print(f"expec basket price {expected_basket_mid_price}")
                 logger.print("spread is", spread)
-                logger.print(f"variance is {np.var(self.premium_cache)}")
 
                 ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
                 bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
@@ -440,26 +415,122 @@ class Trader:
                 else:
                     orders[product].append(Order(product, math.ceil(expected_basket_mid_price + expected_premium + 20), -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
 
-                # for item in products:
-                #     best_bid, best_bid_amount = buy_orders[item][0]
-                #     best_ask, best_ask_amount = sell_orders[item][0]
-                #     ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[item] - state.position.get(item, 0))
-                #     bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[item] - state.position.get(item, 0))
+                for item in products:
+                    best_bid, best_bid_amount = buy_orders[item][0]
+                    best_ask, best_ask_amount = sell_orders[item][0]
+                    ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[item] - state.position.get(item, 0))
+                    bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[item] - state.position.get(item, 0))
 
-                #     prod_mid = (best_ask + best_bid)/2
+                    prod_mid = (best_ask + best_bid)/2
 
-                #     if item == "CHOCOLATE":
-                #         if prod_mid > mid_price - 62728.5435 + 1000: # and not (difference < expected_premium - spread):
-                #             orders[item].append(Order(item, best_ask, ask_amount)) # buy
-                #         if prod_mid < mid_price - 62728.5435 - 500: # and not (difference > expected_premium + spread):
-                #             orders[item].append(Order(item, best_bid, bid_amount)) # sell
-                #     if item == "ROSES":
-                #         if prod_mid > mid_price - 55487: #56201.90 + 900: # and not (difference < expected_premium - spread):
-                #             orders[item].append(Order(item, best_ask, -best_ask_amount)) # buy
-                #         if prod_mid < mid_price - 56494: #56201.90 - 450: # and not (difference > expected_premium + spread):
-                #             orders[item].append(Order(item, best_bid, -best_bid_amount)) # sell
+                    if item == "CHOCOLATE":
+                        if prod_mid > mid_price - 62728.5435 + 1000: # and not (difference < expected_premium - spread):
+                            orders[item].append(Order(item, best_ask, ask_amount)) # buy
+                        if prod_mid < mid_price - 62728.5435 - 500: # and not (difference > expected_premium + spread):
+                            orders[item].append(Order(item, best_bid, bid_amount)) # sell
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
+
+    def norm_cdf(self, x):
+        return 0.5 * (1 + math.erf(x / np.sqrt(2)))
+
+    def black_scholes(self, mid_price: float):
+        S = mid_price # Spot price
+        K = 10000  # Strike price
+        T = 246/252  # Time to expiration (in years)
+        r = 0.001943 # Risk-free interest rate
+        sigma = 0.161945 #0.16195 #if (len(self.coconut_diffs) < 5) else np.std(self.coconut_diffs) #0.161 #0.16195  #0.161940117 # Volatility
+        logger.print(sigma)
+
+        d1 = (np.log(S / K) + (r + sigma**2 / 2) * T) / (sigma * np.sqrt(T))
+        d2 = d1 - sigma * np.sqrt(T)
+
+        # Call option
+        c_price = S * np.exp(-r * T) * self.norm_cdf(d1) - K * np.exp(-r * T) * self.norm_cdf(d2)
+        
+        # Put option
+        # p_price = K * np.exp(-r * T) * self.norm_cdf(-d2) - S * np.exp(-r * T) * self.norm_cdf(-d1)
+
+        return c_price #, p_price
+
+    def compute_coupon_orders(self, state):
+        products = ["COCONUT", "COCONUT_COUPON"]
+        sell_orders = {"COCONUT": [], "COCONUT_COUPON": []}
+        buy_orders = {"COCONUT": [], "COCONUT_COUPON": []}
+        mid_prices = {"COCONUT": 0, "COCONUT_COUPON": 0}
+        orders = {"COCONUT": [], "COCONUT_COUPON": []}
+        
+        for product in products:
+            order_depth: OrderDepth = state.order_depths[product]
+
+            market_sell_orders = list(order_depth.sell_orders.items())
+            market_buy_orders = list(order_depth.buy_orders.items())
+
+            if len(order_depth.buy_orders) != 0 and len(order_depth.sell_orders) != 0:
+                market_buy_orders = list(order_depth.buy_orders.items())
+                market_sell_orders = list(order_depth.sell_orders.items())
+
+                buy_orders[product] = market_buy_orders
+                sell_orders[product] = market_sell_orders
+
+                best_bid, best_bid_amount = market_buy_orders[0]
+                best_ask, best_ask_amount = market_sell_orders[0]
+
+                mid_prices[product] = (best_ask + best_bid)/2
+
+        product = "COCONUT"
+        if len(buy_orders[product]) == 0 or len(sell_orders[product]) == 0:
+            coc_mid_price = 10000
+        else:
+            coc_mid_price = mid_prices[product]
+
+        c_price = self.black_scholes(coc_mid_price)
+
+        logger.print(c_price)
+
+        product = "COCONUT"
+        if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
+            coc_best_ask, best_ask_amount = sell_orders[product][0]
+            coc_best_bid, best_bid_amount = buy_orders[product][0]
+
+            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//2 - state.position.get(product, 0))
+            coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+
+        product = "COCONUT_COUPON"
+        if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
+            best_ask, best_ask_amount = sell_orders[product][0]
+            best_bid, best_bid_amount = buy_orders[product][0]
+
+        spread = 5
+        # buying
+        if len(sell_orders[product]) != 0:
+            amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+            if best_ask <= c_price: # take
+                orders[product].append(Order(product, best_ask, amount))
+                logger.print(product, " BUY", str(amount) + "x", best_ask)
+                
+                # sell hedge coconuts
+                if state.position.get(product, 0) > 100:
+                    orders["COCONUT"].append(Order("COCONUT", coc_best_bid, coc_bid_amount))
+
+            else: # market make
+                orders[product].append(Order(product, round(c_price) - spread, abs(self.POSITION_LIMIT[product] - state.position.get(product, 0))))
+
+        # Do the SELLING
+        if len(buy_orders[product]) != 0:
+            amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+            if best_bid >= c_price: # take
+                orders[product].append(Order(product, best_bid, amount))
+                logger.print(product, " SELL", str(-amount) + "x", best_bid)
+
+                # take buy hedge coconuts
+                if state.position.get(product, 0) < -100:
+                    orders["COCONUT"].append(Order("COCONUT", coc_best_ask, coc_ask_amount))
+
+            else: # market make
+                orders[product].append(Order(product, round(c_price) + spread, -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
+
+        return orders["COCONUT"], orders["COCONUT_COUPON"]
 
     def run(self, state: TradingState):
         # update cache only if information is lost
@@ -469,7 +540,7 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_cache('STARFRUIT', state, self.starfruit_cache)
+        self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
         amethyst_orders = self.compute_amethyst_orders(state)
         result["AMETHYSTS"] = amethyst_orders
@@ -481,8 +552,11 @@ class Trader:
 
         result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
 
+        result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
+        
         # serialise data
         trader_data = self.serialize_to_string()
 
         logger.flush(state, result, 0, trader_data)
         return result, conversions, trader_data
+    
