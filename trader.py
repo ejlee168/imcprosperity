@@ -486,7 +486,7 @@ class Trader:
         S = mid_price # Spot price
         K = 10000  # Strike price
         T = 246/252  # Time to expiration (in years)
-        r = 0.00197 # Risk-free interest rate
+        r = 0.00195 # Risk-free interest rate
         sigma = 0.16195 #if (len(self.coconut_diffs) < 2) else np.std(self.coconut_diffs) #0.161940117 # Volatility
         logger.print(sigma)
 
