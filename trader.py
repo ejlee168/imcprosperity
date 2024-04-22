@@ -108,6 +108,9 @@ class Trader:
     # Stores last starfruit midprices - used for regression
     starfruit_cache = []
 
+    coconut_diffs = []
+    coconut_last_price = 0
+
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -124,7 +127,7 @@ class Trader:
             setattr(Trader, attr_name, attr_value)
 
     # Handles caching of a product by removing items from cache before overflow, and appending new midprices to the cache
-    def handle_cache(self, product: Symbol, state: TradingState, cache: list[int]):
+    def handle_starfruit_cache(self, product: Symbol, state: TradingState, cache: list[int]):
         cache_num = self.product_cache_num[product]
         
         # Remove prices from cache if there are too many
@@ -181,7 +184,7 @@ class Trader:
         sd = np.std(cache)
 
         return y*(sd**2) + 2/y * math.log(1 + y/k)
-
+    
     # Returns weighted midprice from order book
     def get_weighted_midprice(self, market_sell_orders: list[(int, int)], market_buy_orders: list[(int, int)]):
         return sum([price*-volume for price, volume in market_sell_orders] + 
@@ -431,16 +434,61 @@ class Trader:
                             orders[item].append(Order(item, best_bid, bid_amount)) # sell
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
-    
+
+    def cache_coconut_diff(self, cache: list[int], state: TradingState):
+        # Remove prices from cache if there are too many
+        if (len(cache) == 20): 
+            cache.pop(0)
+        
+        product = "COCONUT"
+        order_depth: OrderDepth = state.order_depths[product]
+        market_sell_orders = list(order_depth.sell_orders.items())
+        market_buy_orders = list(order_depth.buy_orders.items())
+
+        mid_price = 10000
+        if len(order_depth.buy_orders) != 0 and len(order_depth.sell_orders) != 0:
+            market_buy_orders = list(order_depth.buy_orders.items())
+            market_sell_orders = list(order_depth.sell_orders.items())
+            best_bid, _ = market_buy_orders[0]
+            best_ask, _ = market_sell_orders[0]
+            mid_price = (best_ask + best_bid)/2
+
+        
+        if (len(cache) == 0):
+            cache.append(0)
+            self.coconut_last_price = 10000
+        else:
+            cache.append(mid_price - self.coconut_last_price)
+            self.coconut_last_price = mid_price
+
+
     def norm_cdf(self, x):
         return 0.5 * (1 + math.erf(x / np.sqrt(2)))
+
+    # def implied_volatility(spot, strike, time_to_maturity, risk_free_rate, dividend_yield, market_price, tolerance=1e-5, max_iterations=100):
+    #     vol_low = 0.01
+    #     vol_high = 1.0
+    #     for i in range(max_iterations):
+    #         vol_mid = (vol_low + vol_high) / 2.0
+    #         option_price = black_scholes(spot, strike, time_to_maturity, risk_free_rate - dividend_yield, vol_mid)
+    #         price_diff = market_price - option_price
+    #         if abs(price_diff) < tolerance:
+    #             return vol_mid
+    #         elif price_diff > 0:
+    #         # Market price is higher, so implied vol is lower
+    #         vol_high = vol_mid
+    #         else:
+    #         # Market price is lower, so implied vol is higher
+    #         vol_low = vol_mid
+    #     raise Exception("Failed to converge after", max_iterations, "iterations")
 
     def black_scholes(self, mid_price: float):
         S = mid_price # Spot price
         K = 10000  # Strike price
         T = 246/252  # Time to expiration (in years)
-        r = 0.033 # Risk-free interest rate
-        sigma = 0.119156162 # Volatility
+        r = 0.00197 # Risk-free interest rate
+        sigma = 0.16195 #if (len(self.coconut_diffs) < 2) else np.std(self.coconut_diffs) #0.161940117 # Volatility
+        logger.print(sigma)
 
         d1 = (np.log(S / K) + (r + sigma**2 / 2) * T) / (sigma * np.sqrt(T))
         d2 = d1 - sigma * np.sqrt(T)
@@ -461,6 +509,7 @@ class Trader:
         market_sell_orders = list(order_depth.sell_orders.items())
         market_buy_orders = list(order_depth.buy_orders.items())
 
+        mid_price = 10000
         if len(order_depth.buy_orders) != 0 and len(order_depth.sell_orders) != 0:
             market_buy_orders = list(order_depth.buy_orders.items())
             market_sell_orders = list(order_depth.sell_orders.items())
@@ -469,21 +518,14 @@ class Trader:
             best_ask, best_ask_amount = market_sell_orders[0]
             mid_price = (best_ask + best_bid)/2
 
-        elif len(order_depth.buy_orders) == 0 and len(order_depth.sell_orders) == 0:
-            mid_price = 10000
-
-        elif len(order_depth.buy_orders) == 0:
-            market_sell_orders = list(order_depth.sell_orders.items())
-            best_ask, best_ask_amount = market_sell_orders[0]
-            mid_price = best_ask
-
-        elif len(order_depth.sell_orders) == 0:
-            market_buy_orders = list(order_depth.buy_orders.items())
-            best_bid, best_bid_amount = market_buy_orders[0]
-            mid_price = best_bid
-        
         c_price, p_price = self.black_scholes(mid_price)
-        logger.print(c_price, p_price)
+
+        # if mid_price < 10000:
+        #     black_price = p_price
+        # else:
+        black_price = c_price
+
+        logger.print(c_price, p_price, black_price)
 
         product = "COCONUT_COUPON"
         order_depth: OrderDepth = state.order_depths[product]
@@ -499,7 +541,7 @@ class Trader:
         # buying
         if len(order_depth.sell_orders) != 0:
             amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
-            if best_ask <= p_price: # take
+            if best_ask <= black_price: # take
                 orders.append(Order(product, best_ask, amount))
                 logger.print(product, " BUY", str(amount) + "x", best_ask)
             # else: # market make
@@ -508,7 +550,7 @@ class Trader:
         # Do the SELLING
         if len(order_depth.buy_orders) != 0:
             amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
-            if best_bid >= c_price: # take
+            if best_bid >= black_price: # take
                 orders.append(Order(product, best_bid, amount))
                 logger.print(product, " SELL", str(-amount) + "x", best_bid)
             # else: # market make
@@ -524,7 +566,7 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        # self.handle_cache('STARFRUIT', state, self.starfruit_cache)
+        # self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
         # amethyst_orders = self.compute_amethyst_orders(state)
         # result["AMETHYSTS"] = amethyst_orders
@@ -535,7 +577,9 @@ class Trader:
         # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
         # result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
-
+        
+        self.cache_coconut_diff(self.coconut_diffs, state)
+        logger.print(self.coconut_diffs)
         result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         # serialise data
         trader_data = self.serialize_to_string()
