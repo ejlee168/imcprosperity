@@ -540,23 +540,23 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
+        # self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
-        amethyst_orders = self.compute_amethyst_orders(state)
-        result["AMETHYSTS"] = amethyst_orders
+        # amethyst_orders = self.compute_amethyst_orders(state)
+        # result["AMETHYSTS"] = amethyst_orders
 
-        starfruit_orders = self.compute_starfruit_orders(state)
-        result["STARFRUIT"] = starfruit_orders
+        # starfruit_orders = self.compute_starfruit_orders(state)
+        # result["STARFRUIT"] = starfruit_orders
 
-        result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
+        # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
-        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
+        # result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
 
         result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         
         # serialise data
         trader_data = self.serialize_to_string()
-
+        conversions = 0
         logger.flush(state, result, 0, trader_data)
         return result, conversions, trader_data
     
