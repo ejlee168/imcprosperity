@@ -350,6 +350,7 @@ class Trader:
         orders.append(Order(product, int(offer_price), bid_amount))
 
         # selling
+        
         spread = 2 #min(abs(observation.importTariff) + 1, 2) # used 2.5 in round 2 -> This should be calculated based on something BUG OPTIMISE
         offer_price = state.observations.conversionObservations['ORCHIDS'].askPrice + observation.importTariff + spread 
         orders.append(Order(product, math.ceil(offer_price), -ask_amount))
@@ -357,6 +358,40 @@ class Trader:
         conversions = -state.position.get(product, 0)
 
         return orders, conversions
+
+    def roses_bot_signal(self, state: TradingState):
+        product = "ROSES"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                if trade.seller == "Rhianna":
+                    return "sell"
+                if trade.buyer == "Rhianna":
+                    return "buy"
+        return None
+
+    def choc_bot_signal(self, state: TradingState):
+        product = "CHOCOLATE"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                if trade.seller == "Vladimir":     
+                    return "sell"
+                if trade.buyer == "Vladimir":
+                    return "buy"
+        return None
+    
+    def straw_bot_signal(self, state: TradingState):
+        product = "STRAWBERRIES"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                if trade.seller == "Vlad":
+                    return "sell"
+                if trade.buyer == "Vlad":
+                    return "buy"
+        return None
+
 
     def compute_basket_orders(self, state: TradingState):
         products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
@@ -425,9 +460,23 @@ class Trader:
 
                     if item == "CHOCOLATE":
                         if prod_mid > mid_price - 62728.5435 + 1000: # and not (difference < expected_premium - spread):
+                        # if self.choc_bot_signal(state) == "sell":
                             orders[item].append(Order(item, best_ask, ask_amount)) # buy
                         if prod_mid < mid_price - 62728.5435 - 500: # and not (difference > expected_premium + spread):
+                        # if self.choc_bot_signal(state) == "buy":
                             orders[item].append(Order(item, best_bid, bid_amount)) # sell
+
+                    if item == "ROSES":
+                        if self.roses_bot_signal(state) == "buy":
+                             orders[item].append(Order(item, best_ask, ask_amount)) 
+                        if self.roses_bot_signal(state) == "sell":
+                            orders[item].append(Order(item, best_bid, bid_amount))
+
+                    if item == "STRAWBERRIES":
+                        if self.straw_bot_signal(state) == "buy":
+                             orders[item].append(Order(item, best_ask, ask_amount)) 
+                        if self.straw_bot_signal(state) == "sell":
+                            orders[item].append(Order(item, best_bid, bid_amount))
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
 
@@ -550,7 +599,7 @@ class Trader:
 
         # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
-        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"] , _ = self.compute_basket_orders(state) # this fucking sucks why
 
         # result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         

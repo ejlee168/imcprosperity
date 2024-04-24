@@ -493,8 +493,8 @@ class Trader:
             coc_best_ask, best_ask_amount = sell_orders[product][0]
             coc_best_bid, best_bid_amount = buy_orders[product][0]
 
-            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//2 - state.position.get(product, 0))
-            coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
+            coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
 
         product = "COCONUT_COUPON"
         if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
