@@ -235,22 +235,13 @@ class Trader:
                 spread = 3
                 orders.append(Order(product, max(int(10000 + spread), best_bid - 1), amount))
                 logger.print(product, " SELL", str(amount) + "x", best_bid)
-                
-
-        # Market MAKING
-        bid_amount = 10
-
-        if (state.position.get(product, 0) > bid_amount):
-            bid_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
-
-        ask_amount = 10
-
-        if (state.position.get(product, 0) < -ask_amount):
-            ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 3
         price = 10000
         undercut = 1
+
+        ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         if not (best_ask <= acceptable_price):
             # Send a buy order (bots will sell to us at this price)
@@ -258,9 +249,20 @@ class Trader:
 
         if not (best_bid >= acceptable_price):
             # Send a sell order (bots will buy from us at this price)
-            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # SELL should be negative for market making -- int(price + spread)
+            orders.append(Order(product, max(int(price + spread), best_ask - undercut), ask_amount)) # SELL should be negative for market making -- int(price + spread)
 
         return orders
+
+    def bot_star_signal(self, state):
+        product = "STARFRUIT"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                if trade.seller == "Vinnie":
+                    return "sell"
+                if trade.buyer == "Vinnie":
+                    return "buy"
+        return None
 
     def compute_starfruit_orders(self, state):
         product = "STARFRUIT"
@@ -286,52 +288,59 @@ class Trader:
         ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
         bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
-        # Do the BUYING 
-        if len(order_depth.sell_orders) != 0:
-            # Buy based on average price
-            if best_ask <= acceptable_price_avg: 
-                logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
-                orders.append(Order(product, best_ask, ask_amount))
+        signal = self.bot_star_signal(state)
 
-             # Buy based on regression price
-            elif best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
-                logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
-                orders.append(Order(product, best_ask, ask_amount))
+        if signal == "buy":
+            orders.append(Order(product, best_ask, ask_amount))
+        if signal == "sell":
+            orders.append(Order(product, best_bid, bid_amount))
 
-        # Do the SELLING
-        if len(order_depth.buy_orders) != 0:
-            # Sell based on average price
-            if best_bid >= acceptable_price_avg:
-                logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
-                orders.append(Order(product, best_bid, bid_amount))
+        # # Do the BUYING 
+        # if len(order_depth.sell_orders) != 0:
+        #     # Buy based on average price
+        #     if best_ask <= acceptable_price_avg: 
+        #         logger.print(product, " BUY avg", str(-best_ask_amount) + "x", best_ask)
+        #         orders.append(Order(product, best_ask, ask_amount))
 
-            # Sell based on regression price
-            elif best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
-                logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
-                orders.append(Order(product, best_bid, bid_amount))
+        #      # Buy based on regression price
+        #     elif best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
+        #         logger.print(product, " BUY regres", str(-best_ask_amount) + "x", best_ask)
+        #         orders.append(Order(product, best_ask, ask_amount))
+
+        # # Do the SELLING
+        # if len(order_depth.buy_orders) != 0:
+        #     # Sell based on average price
+        #     if best_bid >= acceptable_price_avg:
+        #         logger.print(product, " SELL avg", str(best_bid_amount) + "x", best_bid)
+        #         orders.append(Order(product, best_bid, bid_amount))
+
+        #     # Sell based on regression price
+        #     elif best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]:
+        #         logger.print(product, " SELL regres", str(best_bid_amount) + "x", best_bid)
+        #         orders.append(Order(product, best_bid, bid_amount))
 
         # MArket MAKING
-        bid_amount = 10
+        # bid_amount = 10
 
-        if (state.position.get(product, 0) > bid_amount):
-            bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+        # if (state.position.get(product, 0) > bid_amount):
+        #     bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        ask_amount = 10
+        # ask_amount = 10
 
-        if (state.position.get(product, 0) < -ask_amount):
-            ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+        # if (state.position.get(product, 0) < -ask_amount):
+        #     ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
-        spread = self.get_spread(self.starfruit_cache)
-        price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
-        undercut = 1
+        # spread = self.get_spread(self.starfruit_cache)
+        # price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
+        # undercut = 1
 
-        if not (best_ask <= acceptable_price_avg or best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
-            # Send a buy order (bots will sell to us at this price and we are looking to buy)
-            orders.append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
+        # if not (best_ask <= acceptable_price_avg or best_ask <= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
+        #     # Send a buy order (bots will sell to us at this price and we are looking to buy)
+        #     orders.append(Order(product, min(int(price - spread), best_bid + undercut), bid_amount)) 
 
-        if not (best_bid >= acceptable_price_avg or best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
-            # Send a sell order (bots will buy from us at this price and we are looking to sell)
-            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+        # if not (best_bid >= acceptable_price_avg or best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
+        #     # Send a sell order (bots will buy from us at this price and we are looking to sell)
+        #     orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
 
         return orders
 
@@ -542,8 +551,8 @@ class Trader:
 
         self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
-        amethyst_orders = self.compute_amethyst_orders(state)
-        result["AMETHYSTS"] = amethyst_orders
+        # amethyst_orders = self.compute_amethyst_orders(state)
+        # result["AMETHYSTS"] = amethyst_orders
 
         starfruit_orders = self.compute_starfruit_orders(state)
         result["STARFRUIT"] = starfruit_orders

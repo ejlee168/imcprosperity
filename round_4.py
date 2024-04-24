@@ -108,6 +108,10 @@ class Trader:
     # Stores last starfruit midprices - used for regression
     starfruit_cache = []
 
+    raj_coc_pos = 0
+    rhi_coc_pos = 0
+    vin_coc_pos = 0
+
     # Helper functions to serialise and deserialise data
     def serialize_to_string(self):
         data = {}
@@ -453,6 +457,44 @@ class Trader:
 
         return c_price #, p_price
 
+    def cache_raj_coc(self, state):
+        product = "COCONUT"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                if trade.seller == "Raj":
+                    self.raj_coc_pos -= trade.quantity
+                elif trade.buyer == "Raj":
+                    self.raj_coc_pos += trade.quantity
+
+                elif trade.seller == "Rhianna":
+                    self.rhi_coc_pos -= trade.quantity
+                elif trade.buyer == "Rhianna":
+                    self.rhi_coc_pos += trade.quantity
+
+                elif trade.seller == "Vinnie":
+                    self.vin_coc_pos -= trade.quantity
+                elif trade.buyer == "Vinnie":
+                    self.vin_coc_pos += trade.quantity
+
+    def bot_coc_signal(self, state):
+        # logger.print(f"Raj pos {self.raj_coc_pos}")
+        product = "COCONUT"
+        order_depth: List[Trade] = state.market_trades.get(product, []) 
+        if order_depth != []:
+            for trade in order_depth:
+                # if trade.buyer == "Vinnie" and trade.seller == "Vinnie":
+                #     return None
+                # if self.raj_coc_pos < 0 and self.rhi_coc_pos < 0:
+                #     return "buy"
+                # elif self.raj_coc_pos > 0 and self.rhi_coc_pos > 0:
+                #     return "sell"
+                if self.vin_coc_pos < 0:
+                    return "sell"
+                elif self.vin_coc_pos > 0:
+                    return "buy"
+        return None
+
     def compute_coupon_orders(self, state):
         products = ["COCONUT", "COCONUT_COUPON"]
         sell_orders = {"COCONUT": [], "COCONUT_COUPON": []}
@@ -477,6 +519,14 @@ class Trader:
                 best_ask, best_ask_amount = market_sell_orders[0]
 
                 mid_prices[product] = (best_ask + best_bid)/2
+        
+        ask_amount = min(-best_ask_amount, self.POSITION_LIMIT["COCONUT"] - state.position.get("COCONUT", 0))
+        bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT["COCONUT"] - state.position.get("COCONUT", 0))
+
+        if self.bot_coc_signal(state) == "buy":
+            orders["COCONUT"].append(Order("COCONUT", mid_prices["COCONUT"], ask_amount))
+        elif self.bot_coc_signal(state) == "sell":
+            orders["COCONUT"].append(Order("COCONUT", mid_prices["COCONUT"], bid_amount))
 
         product = "COCONUT"
         if len(buy_orders[product]) == 0 or len(sell_orders[product]) == 0:
@@ -488,13 +538,13 @@ class Trader:
 
         logger.print(c_price)
 
-        product = "COCONUT"
-        if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
-            coc_best_ask, best_ask_amount = sell_orders[product][0]
-            coc_best_bid, best_bid_amount = buy_orders[product][0]
+        # product = "COCONUT"
+        # if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
+        #     coc_best_ask, best_ask_amount = sell_orders[product][0]
+        #     coc_best_bid, best_bid_amount = buy_orders[product][0]
 
-            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
-            coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
+        #     coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
+        #     coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product]//5 - state.position.get(product, 0))
 
         product = "COCONUT_COUPON"
         if len(sell_orders[product]) != 0 and len(buy_orders[product]) != 0:
@@ -510,8 +560,8 @@ class Trader:
                 logger.print(product, " BUY", str(amount) + "x", best_ask)
                 
                 # sell hedge coconuts
-                if state.position.get(product, 0) > 100:
-                    orders["COCONUT"].append(Order("COCONUT", coc_best_bid, coc_bid_amount))
+                # if state.position.get(product, 0) > 100:
+                #     orders["COCONUT"].append(Order("COCONUT", coc_best_bid, coc_bid_amount))
 
             else: # market make
                 orders[product].append(Order(product, round(c_price) - spread, abs(self.POSITION_LIMIT[product] - state.position.get(product, 0))))
@@ -524,8 +574,8 @@ class Trader:
                 logger.print(product, " SELL", str(-amount) + "x", best_bid)
 
                 # take buy hedge coconuts
-                if state.position.get(product, 0) < -100:
-                    orders["COCONUT"].append(Order("COCONUT", coc_best_ask, coc_ask_amount))
+                # if state.position.get(product, 0) < -100:
+                #     orders["COCONUT"].append(Order("COCONUT", coc_best_ask, coc_ask_amount))
 
             else: # market make
                 orders[product].append(Order(product, round(c_price) + spread, -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
@@ -552,6 +602,7 @@ class Trader:
 
         # result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
 
+        self.cache_raj_coc(state)
         result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         
         # serialise data
