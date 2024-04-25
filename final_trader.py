@@ -235,22 +235,13 @@ class Trader:
                 spread = 3
                 orders.append(Order(product, max(int(10000 + spread), best_bid - 1), amount))
                 logger.print(product, " SELL", str(amount) + "x", best_bid)
-                
-
-        # Market MAKING
-        bid_amount = 10
-
-        if (state.position.get(product, 0) > bid_amount):
-            bid_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
-
-        ask_amount = 10
-
-        if (state.position.get(product, 0) < -ask_amount):
-            ask_amount = math.ceil((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
 
         spread = 3
         price = 10000
         undercut = 1
+
+        bid_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        ask_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         if not (best_ask <= acceptable_price):
             # Send a buy order (bots will sell to us at this price)
@@ -258,7 +249,7 @@ class Trader:
 
         if not (best_bid >= acceptable_price):
             # Send a sell order (bots will buy from us at this price)
-            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) # SELL should be negative for market making -- int(price + spread)
+            orders.append(Order(product, max(int(price + spread), best_ask - undercut), ask_amount)) # SELL should be negative for market making -- int(price + spread)
 
         return orders
 
@@ -311,15 +302,8 @@ class Trader:
                 orders.append(Order(product, best_bid, bid_amount))
 
         # MArket MAKING
-        bid_amount = 10
-
-        if (state.position.get(product, 0) > bid_amount):
-            bid_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
-
-        ask_amount = 10
-
-        if (state.position.get(product, 0) < -ask_amount):
-            ask_amount = int((self.POSITION_LIMIT[product] - abs(state.position.get(product, 0))) * 0.5)
+        bid_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        ask_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         spread = self.get_spread(self.starfruit_cache)
         price = self.get_weighted_midprice(market_sell_orders, market_buy_orders)
@@ -331,7 +315,7 @@ class Trader:
 
         if not (best_bid >= acceptable_price_avg or best_bid >= acceptable_price_regres and state.timestamp >= 100 * self.product_cache_num[product]):
             # Send a sell order (bots will buy from us at this price and we are looking to sell)
-            orders.append(Order(product, max(int(price + spread), best_ask - undercut), -ask_amount)) 
+            orders.append(Order(product, max(int(price + spread), best_ask - undercut), ask_amount)) 
 
         return orders
 
@@ -369,17 +353,6 @@ class Trader:
                 if trade.buyer == "Rhianna":
                     return "buy"
         return None
-
-    def choc_bot_signal(self, state: TradingState):
-        product = "CHOCOLATE"
-        order_depth: List[Trade] = state.market_trades.get(product, []) 
-        if order_depth != []:
-            for trade in order_depth:
-                if trade.seller == "Vladimir":     
-                    return "sell"
-                if trade.buyer == "Vladimir":
-                    return "buy"
-        return None
     
     def straw_bot_signal(self, state: TradingState):
         product = "STRAWBERRIES"
@@ -392,7 +365,6 @@ class Trader:
                     if trade.buyer == "Vinnie":
                         return "sell", int(trade.price), trade.quantity
         return None, None, None
-
 
     def compute_basket_orders(self, state: TradingState):
         products = ["CHOCOLATE", "STRAWBERRIES", "ROSES", "GIFT_BASKET"]
@@ -429,11 +401,7 @@ class Trader:
                 expected_premium = 380
                 difference = mid_price - expected_basket_mid_price
                 spread = 35
-
-                logger.print(f"expec prem {expected_premium}")
-                logger.print(f"expec basket price {expected_basket_mid_price}")
-                logger.print("spread is", spread)
-
+                mm_spread = 8
                 ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
                 bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
@@ -442,43 +410,34 @@ class Trader:
                     logger.print(f"market buy {best_ask}")
                     orders[product].append(Order(product, best_ask, ask_amount))
                 else:
-                    orders[product].append(Order(product, int(expected_basket_mid_price + expected_premium - 20), self.POSITION_LIMIT[product] - state.position.get(product, 0)))
+                    orders[product].append(Order(product, min(best_bid + 1, int(mid_price - mm_spread)), self.POSITION_LIMIT[product] - state.position.get(product, 0)))
 
                 # Send a sell order (bots will buy from us at this price and we are looking to sell)
                 if difference > expected_premium + spread:
                     logger.print(f"market sell {best_bid}")
                     orders[product].append(Order(product, best_bid, bid_amount))
                 else:
-                    orders[product].append(Order(product, math.ceil(expected_basket_mid_price + expected_premium + 20), -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
+                    orders[product].append(Order(product, max(best_ask - 1, int(mid_price + mm_spread)), -self.POSITION_LIMIT[product] - state.position.get(product, 0)))
 
-                for item in products:
-                    best_bid, best_bid_amount = buy_orders[item][0]
-                    best_ask, best_ask_amount = sell_orders[item][0]
-                    ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[item] - state.position.get(item, 0))
-                    bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[item] - state.position.get(item, 0))
+        for item in products:
+            best_bid, best_bid_amount = buy_orders[item][0]
+            best_ask, best_ask_amount = sell_orders[item][0]
+            ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[item] - state.position.get(item, 0))
+            bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[item] - state.position.get(item, 0))
 
-                    prod_mid = (best_ask + best_bid)/2
+            prod_mid = (best_ask + best_bid)/2
 
-                    if item == "CHOCOLATE":
-                        if prod_mid > mid_price - 62728.5435 + 1000: # and not (difference < expected_premium - spread):
-                        # if self.choc_bot_signal(state) == "sell":
-                            orders[item].append(Order(item, best_ask, ask_amount)) # buy
-                        if prod_mid < mid_price - 62728.5435 - 500: # and not (difference > expected_premium + spread):
-                        # if self.choc_bot_signal(state) == "buy":
-                            orders[item].append(Order(item, best_bid, bid_amount)) # sell
+            if item == "CHOCOLATE":
+                if prod_mid > mid_price - 62728.5435 + 900: # and not (difference < expected_premium - spread):
+                    orders[item].append(Order(item, best_ask, ask_amount)) # buy
+                if prod_mid < mid_price - 62728.5435 - 200: # and not (difference > expected_premium + spread):
+                    orders[item].append(Order(item, best_bid, bid_amount)) # sell
 
-                    if item == "ROSES":
-                        if self.roses_bot_signal(state) == "buy":
-                             orders[item].append(Order(item, best_ask, ask_amount)) 
-                        if self.roses_bot_signal(state) == "sell":
-                            orders[item].append(Order(item, best_bid, bid_amount))
-
-                    if item == "STRAWBERRIES":
-                        signal, price, quantity = self.straw_bot_signal(state)
-                        if signal == "buy":
-                             orders[item].append(Order(item, price, 5))#min(quantity, self.POSITION_LIMIT[item] - state.position.get(item, 0)))) 
-                        if signal == "sell":
-                            orders[item].append(Order(item, price, -5))#max(-quantity, -self.POSITION_LIMIT[item] - state.position.get(item, 0))))
+            if item == "ROSES":
+                if self.roses_bot_signal(state) == "buy":
+                    orders[item].append(Order(item, best_ask, ask_amount))
+                if self.roses_bot_signal(state) == "sell":
+                    orders[item].append(Order(item, best_bid, bid_amount))
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
 
@@ -544,7 +503,7 @@ class Trader:
             coc_best_ask, best_ask_amount = sell_orders[product][0]
             coc_best_bid, best_bid_amount = buy_orders[product][0]
 
-            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product]//2 - state.position.get(product, 0))
+            coc_ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
             coc_bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         product = "COCONUT_COUPON"
@@ -561,7 +520,7 @@ class Trader:
                 logger.print(product, " BUY", str(amount) + "x", best_ask)
                 
                 # sell hedge coconuts
-                if state.position.get(product, 0) > 100:
+                if state.position.get(product, 0) < -300:
                     orders["COCONUT"].append(Order("COCONUT", coc_best_bid, coc_bid_amount))
 
             else: # market make
@@ -575,7 +534,7 @@ class Trader:
                 logger.print(product, " SELL", str(-amount) + "x", best_bid)
 
                 # take buy hedge coconuts
-                if state.position.get(product, 0) < -100:
+                if state.position.get(product, 0) > 300:
                     orders["COCONUT"].append(Order("COCONUT", coc_best_ask, coc_ask_amount))
 
             else: # market make
@@ -591,23 +550,23 @@ class Trader:
         # Dictionary that will end up storing all the orders of each product
         result = {}
 
-        # self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
+        self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
-        # amethyst_orders = self.compute_amethyst_orders(state)
-        # result["AMETHYSTS"] = amethyst_orders
+        amethyst_orders = self.compute_amethyst_orders(state)
+        result["AMETHYSTS"] = amethyst_orders
 
-        # starfruit_orders = self.compute_starfruit_orders(state)
-        # result["STARFRUIT"] = starfruit_orders
+        starfruit_orders = self.compute_starfruit_orders(state)
+        result["STARFRUIT"] = starfruit_orders
 
-        # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
+        result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
-        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"] , result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"], result["GIFT_BASKET"] = self.compute_basket_orders(state)
 
-        # result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
+        result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         
         # serialise data
         trader_data = self.serialize_to_string()
-        conversions = 0
+        # conversions = 0
         logger.flush(state, result, 0, trader_data)
         return result, conversions, trader_data
     
