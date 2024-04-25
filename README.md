@@ -20,9 +20,9 @@ Team too busy sadge only ethan worked on it. Round 3 got extended by an extra da
 # Results after round 3: 708k pnl, 176th global and 9th in Aus
 
 ## 19th April - Round 4:
-Used black scholes to buy coupons. We decided to hedge coconuts last minute too. Hedging lost us -20k, but algorithm went well. Manual rescoring needed to occur due to a bug, after this we went from 103rd to 100th. Manual was slightly weak this round.
+Used black scholes to buy coupons. We decided to hedge coconuts last minute too. Hedging lost us -20k, but algorithm went well. Manual rescoring needed to occur due to a bug, after this we went from 103rd to 100th. Manual was slightly weak this round. Back to 103rd for some reason
 
-# Results after round 4: 1.08M pnl, 100th global and 6th in Aus
+# Results after round 4: 1.08M pnl, 103th global and 6th in Aus
 
 ## 22nd April - Round 5:
 
