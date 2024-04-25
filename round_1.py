@@ -258,10 +258,11 @@ class Trader:
         order_depth: List[Trade] = state.market_trades.get(product, []) 
         if order_depth != []:
             for trade in order_depth:
-                if trade.seller == "Vinnie":
-                    return "sell"
-                if trade.buyer == "Vinnie":
-                    return "buy"
+                if trade.timestamp + 100 == state.timestamp:
+                    if trade.seller == "Remy":
+                        return "buy"
+                    if trade.buyer == "Remy":
+                        return "sell"
         return None
 
     def compute_starfruit_orders(self, state):
