@@ -386,11 +386,12 @@ class Trader:
         order_depth: List[Trade] = state.market_trades.get(product, []) 
         if order_depth != []:
             for trade in order_depth:
-                if trade.seller == "Vlad":
-                    return "sell"
-                if trade.buyer == "Vlad":
-                    return "buy"
-        return None
+                if trade.timestamp + 100 == state.timestamp:
+                    if trade.seller == "Vinnie":
+                        return "buy", int(trade.price), trade.quantity
+                    if trade.buyer == "Vinnie":
+                        return "sell", int(trade.price), trade.quantity
+        return None, None, None
 
 
     def compute_basket_orders(self, state: TradingState):
@@ -473,10 +474,11 @@ class Trader:
                             orders[item].append(Order(item, best_bid, bid_amount))
 
                     if item == "STRAWBERRIES":
-                        if self.straw_bot_signal(state) == "buy":
-                             orders[item].append(Order(item, best_ask, ask_amount)) 
-                        if self.straw_bot_signal(state) == "sell":
-                            orders[item].append(Order(item, best_bid, bid_amount))
+                        signal, price, quantity = self.straw_bot_signal(state)
+                        if signal == "buy":
+                             orders[item].append(Order(item, price, 5))#min(quantity, self.POSITION_LIMIT[item] - state.position.get(item, 0)))) 
+                        if signal == "sell":
+                            orders[item].append(Order(item, price, -5))#max(-quantity, -self.POSITION_LIMIT[item] - state.position.get(item, 0))))
 
         return orders["CHOCOLATE"], orders["STRAWBERRIES"], orders["ROSES"], orders["GIFT_BASKET"]
 
@@ -599,7 +601,7 @@ class Trader:
 
         # result["ORCHIDS"], conversions = self.compute_orchid_orders(state)
 
-        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"] , _ = self.compute_basket_orders(state) # this fucking sucks why
+        result["CHOCOLATE"], result["STRAWBERRIES"], result["ROSES"] , result["GIFT_BASKET"] = self.compute_basket_orders(state) # this fucking sucks why
 
         # result["COCONUT"], result["COCONUT_COUPON"] = self.compute_coupon_orders(state)
         

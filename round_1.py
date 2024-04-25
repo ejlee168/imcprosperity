@@ -240,8 +240,8 @@ class Trader:
         price = 10000
         undercut = 1
 
-        ask_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
-        bid_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        bid_amount = min(-best_ask_amount, self.POSITION_LIMIT[product] - state.position.get(product, 0))
+        ask_amount = max(-best_bid_amount, -self.POSITION_LIMIT[product] - state.position.get(product, 0))
 
         if not (best_ask <= acceptable_price):
             # Send a buy order (bots will sell to us at this price)
@@ -258,9 +258,9 @@ class Trader:
         order_depth: List[Trade] = state.market_trades.get(product, []) 
         if order_depth != []:
             for trade in order_depth:
-                if trade.seller == "Vinnie":
+                if trade.seller == "Rhianna":
                     return "sell"
-                if trade.buyer == "Vinnie":
+                if trade.buyer == "Rhianna":
                     return "buy"
         return None
 
@@ -551,8 +551,8 @@ class Trader:
 
         self.handle_starfruit_cache('STARFRUIT', state, self.starfruit_cache)
 
-        # amethyst_orders = self.compute_amethyst_orders(state)
-        # result["AMETHYSTS"] = amethyst_orders
+        amethyst_orders = self.compute_amethyst_orders(state)
+        result["AMETHYSTS"] = amethyst_orders
 
         starfruit_orders = self.compute_starfruit_orders(state)
         result["STARFRUIT"] = starfruit_orders
