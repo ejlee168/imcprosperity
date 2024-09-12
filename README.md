@@ -26,7 +26,7 @@ Used black scholes to buy coupons. We decided to hedge coconuts last minute too.
 
 ## 22nd April - Round 5:
 
-
+# Results after round 4: 1.355M pnl, 99th global and 7th in Aus
 
 
 
